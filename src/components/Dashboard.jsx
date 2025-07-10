@@ -5,33 +5,38 @@ import { toast } from 'react-hot-toast';
 import ThemeToggle from './ThemeToggle';
 
 const Dashboard = ({ user, onLogout }) => {
+  // --- All State and Functions are the same as before ---
   const [budget, setBudget] = useState(1000);
   const [newBudgetInput, setNewBudgetInput] = useState('');
-  
   const [expenses, setExpenses] = useState([]);
   const [newExpenseDesc, setNewExpenseDesc] = useState('');
   const [newExpenseAmount, setNewExpenseAmount] = useState('');
+  const [currency, setCurrency] = useState('$');
 
   const totalExpenses = expenses.reduce((sum, expense) => sum + expense.amount, 0);
   const remainingBudget = budget - totalExpenses;
   const progress = budget > 0 ? (totalExpenses / budget) * 100 : 0;
   
-  // Effect for fetching budget
   useEffect(() => {
     const userDocRef = doc(db, 'users', user.uid);
-    const fetchBudget = async () => {
+    const fetchData = async () => {
       const docSnap = await getDoc(userDocRef);
-      if (docSnap.exists() && docSnap.data().budget) {
-        setBudget(docSnap.data().budget);
-        setNewBudgetInput(docSnap.data().budget.toString());
+      if (docSnap.exists()) {
+        const userData = docSnap.data();
+        if (userData.budget) {
+          setBudget(userData.budget);
+          setNewBudgetInput(userData.budget.toString());
+        }
+        if (userData.currency) {
+          setCurrency(userData.currency);
+        }
       } else {
         setNewBudgetInput(budget.toString());
       }
     };
-    fetchBudget();
+    fetchData();
   }, [user.uid]);
 
-  // Effect for listening to expenses
   useEffect(() => {
     const expensesColRef = collection(db, 'users', user.uid, 'expenses');
     const q = query(expensesColRef, orderBy('createdAt', 'desc'));
@@ -54,6 +59,16 @@ const Dashboard = ({ user, onLogout }) => {
     } catch (error) { toast.error("Failed to update budget."); console.error(error); }
   };
 
+  const handleSetCurrency = async (e) => {
+    const newCurrency = e.target.value;
+    const userDocRef = doc(db, 'users', user.uid);
+    try {
+      await setDoc(userDocRef, { currency: newCurrency }, { merge: true });
+      setCurrency(newCurrency);
+      toast.success("Currency updated!");
+    } catch (error) { toast.error("Failed to update currency."); console.error(error); }
+  };
+  
   const handleAddExpense = async (e) => {
     e.preventDefault();
     const amount = Number(newExpenseAmount);
@@ -78,6 +93,7 @@ const Dashboard = ({ user, onLogout }) => {
   return (
     <div className="max-w-5xl mx-auto p-4 md:p-8">
       
+      {/* // --- THIS HEADER SECTION WAS MISSING --- // */}
       <header className="flex justify-between items-center mb-8">
         <div className="flex items-center gap-3">
           <img src={user.photoURL} alt="User" className="w-12 h-12 rounded-full border-2 border-blue-500" />
@@ -90,21 +106,21 @@ const Dashboard = ({ user, onLogout }) => {
           </button>
         </div>
       </header>
+      {/* // --- END OF MISSING SECTION --- // */}
 
       <main>
         <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md mb-8">
           <div className="flex justify-between items-center mb-2">
-            <h2 className="text-lg font-semibold text-gray-600 dark:text-gray-300">Monthly Progress</h2>
             <div className="text-2xl font-bold text-gray-800 dark:text-gray-100">
-              ${totalExpenses.toFixed(2)}
-              <span className="text-gray-400 dark:text-gray-500 text-lg"> / ${budget.toFixed(2)}</span>
+              {currency}{totalExpenses.toFixed(2)}
+              <span className="text-gray-400 dark:text-gray-500 text-lg"> / {currency}{budget.toFixed(2)}</span>
             </div>
           </div>
           <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-4 mb-2">
             <div className="bg-blue-600 h-4 rounded-full" style={{ width: `${Math.min(progress, 100)}%` }}></div>
           </div>
           <p className="text-right font-medium text-gray-600 dark:text-gray-400">
-            ${remainingBudget.toFixed(2)} Remaining
+            {currency}{remainingBudget.toFixed(2)} Remaining
           </p>
         </div>
 
@@ -120,11 +136,30 @@ const Dashboard = ({ user, onLogout }) => {
             </div>
 
             <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md">
-              <h3 className="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-100">Set Your Budget</h3>
-              <form onSubmit={handleSetBudget} className="flex gap-4">
-                <input type="number" value={newBudgetInput} onChange={(e) => setNewBudgetInput(e.target.value)} className="p-3 bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded-lg w-full focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                <button type="submit" className="p-3 px-6 bg-blue-500 text-white font-bold rounded-lg shadow-md hover:bg-blue-600 transition-all">Save</button>
-              </form>
+              <h3 className="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-100">Settings</h3>
+              <div className="flex flex-col gap-4">
+                <form onSubmit={handleSetBudget} className="">
+                  <label className="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Your Budget</label>
+                  <div className="flex gap-4">
+                    <input type="number" value={newBudgetInput} onChange={(e) => setNewBudgetInput(e.target.value)} className="p-3 bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded-lg w-full focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    <button type="submit" className="p-3 px-6 bg-blue-500 text-white font-bold rounded-lg shadow-md hover:bg-blue-600 transition-all">Save</button>
+                  </div>
+                </form>
+                <div>
+                  <label className="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Currency</label>
+                  <select
+                    value={currency}
+                    onChange={handleSetCurrency}
+                    className="w-full p-3 bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="$">USD ($)</option>
+                    <option value="€">EUR (€)</option>
+                    <option value="£">GBP (£)</option>
+                    <option value="¥">JPY (¥)</option>
+                    <option value="₹">INR (₹)</option>
+                  </select>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -136,10 +171,8 @@ const Dashboard = ({ user, onLogout }) => {
                 <li key={expense.id} className="flex justify-between items-center bg-slate-100 dark:bg-gray-700 p-3 rounded-lg">
                   <span className="text-gray-700 dark:text-gray-200">{expense.description}</span>
                   <div className="flex items-center gap-4">
-                    <span className="font-bold text-gray-800 dark:text-gray-100">${expense.amount.toFixed(2)}</span>
-                    <button onClick={() => handleDeleteExpense(expense.id)} className="text-red-500 hover:text-red-700 font-bold text-xl">
-                      ×
-                    </button>
+                    <span className="font-bold text-gray-800 dark:text-gray-100">{currency}{expense.amount.toFixed(2)}</span>
+                    <button onClick={() => handleDeleteExpense(expense.id)} className="text-red-500 hover:text-red-700 font-bold text-xl">×</button>
                   </div>
                 </li>
               ))}
