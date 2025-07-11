@@ -2,20 +2,25 @@ import React, { useState, useEffect } from 'react';
 import { db } from '../firebase';
 import { doc, getDoc, setDoc, collection, addDoc, onSnapshot, deleteDoc, query, orderBy, updateDoc } from "firebase/firestore";
 import { toast } from 'react-hot-toast';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable'; // This import patches jsPDF with the autoTable plugin
+
 import ThemeToggle from './ThemeToggle';
 import SetupModal from './SetupModal';
 import EditExpenseModal from './EditExpenseModal';
 
 const DEFAULT_ICON_URL = '/default-icon.jpg';
 
+// --- SVG Icons ---
 const SettingsIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg> );
 const EditIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.5L15.232 5.232z" /></svg> );
 const DeleteIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-4v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg> );
+const DownloadIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg> );
 
 // Helper function for formatting money based on user's preference
 const formatMoney = (amount, currencySymbol, numberFormat) => {
   const num = Number(amount);
-  if (isNaN(num)) return `${currencySymbol}0.00`;
+  if (isNaN(num)) return `${currencySymbol || '$'}0.00`;
 
   const options = { minimumFractionDigits: 2, maximumFractionDigits: 2 };
 
@@ -43,7 +48,7 @@ const Dashboard = ({ user, onLogout }) => {
   const [currency, setCurrency] = useState('$');
   const [appTitle, setAppTitle] = useState('');
   const [appIcon, setAppIcon] = useState('');
-  const [numberFormat, setNumberFormat] = useState('comma'); // State for number format
+  const [numberFormat, setNumberFormat] = useState('comma');
 
   const totalExpenses = expenses.reduce((sum, expense) => sum + expense.amount, 0);
   const remainingBudget = budget - totalExpenses;
@@ -60,7 +65,7 @@ const Dashboard = ({ user, onLogout }) => {
         setCurrency(userData.currency || '$');
         setAppTitle(userData.appTitle || `${user.displayName}'s Budget`);
         setAppIcon(userData.appIcon || user.photoURL || DEFAULT_ICON_URL);
-        setNumberFormat(userData.numberFormat || 'comma'); // Load user's format preference
+        setNumberFormat(userData.numberFormat || 'comma');
       } else {
         setIsNewUser(true);
         setShowSetupModal(true);
@@ -81,6 +86,51 @@ const Dashboard = ({ user, onLogout }) => {
     return () => unsubscribe();
   }, [user.uid]);
 
+  const handleDownloadPdf = () => {
+    if (expenses.length === 0) {
+      toast.error("No expenses to export.");
+      return;
+    }
+
+    const doc = new jsPDF();
+    doc.setFontSize(18);
+    doc.text("Expense Report", 14, 22);
+    doc.setFontSize(11);
+    doc.setTextColor(100);
+    doc.text(`For: ${appTitle}`, 14, 30);
+    doc.text(`Date: ${new Date().toLocaleDateString()}`, 14, 36);
+
+    const tableColumn = ["Date", "Description", "Notes", "Amount"];
+    const tableRows = [];
+
+    expenses.forEach(expense => {
+      const expenseData = [
+        expense.createdAt.toDate().toLocaleDateString(),
+        expense.description,
+        expense.notes || "-",
+        formatMoney(expense.amount, currency, numberFormat)
+      ];
+      tableRows.push(expenseData);
+    });
+
+    doc.autoTable({
+      head: [tableColumn],
+      body: tableRows,
+      startY: 45,
+      styles: { halign: 'left' },
+      headStyles: { fillColor: [36, 79, 148] },
+      columnStyles: { 3: { halign: 'right' } }
+    });
+
+    const finalY = doc.autoTable.previous.finalY;
+    doc.setFontSize(12);
+    doc.text(`Total Expenses: ${formatMoney(totalExpenses, currency, numberFormat)}`, 14, finalY + 10);
+    doc.text(`Remaining Budget: ${formatMoney(remainingBudget, currency, numberFormat)}`, 14, finalY + 17);
+
+    doc.save(`expense-report-${new Date().toISOString().slice(0, 10)}.pdf`);
+    toast.success("Report downloaded!");
+  };
+
   const handleSaveSettings = async (settings) => {
     if (!settings.budget || settings.budget <= 0) return toast.error("Please enter a valid budget.");
     const userDocRef = doc(db, 'users', user.uid);
@@ -90,7 +140,7 @@ const Dashboard = ({ user, onLogout }) => {
       setCurrency(settings.currency);
       setAppTitle(settings.appTitle);
       setAppIcon(settings.appIcon);
-      setNumberFormat(settings.numberFormat); // Update format state
+      setNumberFormat(settings.numberFormat);
       setShowSetupModal(false);
       toast.success("Settings saved!");
     } catch (error) { toast.error("Failed to save settings."); console.error(error); }
@@ -102,13 +152,12 @@ const Dashboard = ({ user, onLogout }) => {
     if (!newExpenseDesc || isNaN(amount) || amount <= 0) return toast.error("Please enter a valid description and amount.");
     
     const expensesColRef = collection(db, 'users', user.uid, 'expenses');
-    const newExpenseData = {
+    await addDoc(expensesColRef, {
       description: newExpenseDesc,
       amount: amount,
       createdAt: new Date(),
       notes: newExpenseNotes,
-    };
-    await addDoc(expensesColRef, newExpenseData);
+    });
     
     setNewExpenseDesc('');
     setNewExpenseAmount('');
@@ -181,13 +230,15 @@ const Dashboard = ({ user, onLogout }) => {
         expense={editingExpense}
       />
       <div className="max-w-5xl mx-auto p-4 md:p-8">
-        <div className="flex justify-between items-center mb-8">
-          <div className="flex items-center gap-3">
-            <img src={appIcon} alt="App Icon" className="w-16 h-16 object-cover" />
-            <h1 className="text-xl md:text-2xl font-bold text-gray-800 dark:text-gray-100">{appTitle}</h1>
+        <div className="flex justify-between items-center gap-4 mb-8">
+          <div className="flex items-center gap-3 min-w-0">
+            <img src={appIcon} alt="App Icon" className="w-16 h-16 object-cover flex-shrink-0" />
+            <h1 className="text-xl md:text-2xl font-bold text-gray-800 dark:text-gray-100 truncate">
+              {appTitle}
+            </h1>
           </div>
-          <div className="flex items-center gap-4">
-            <button onClick={() => setShowSetupModal(true)} className="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
+          <div className="flex items-center gap-4 flex-shrink-0">
+            <button onClick={() => setShowSetupModal(true)} className="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors" title="Settings">
               <SettingsIcon />
             </button>
             <ThemeToggle />
@@ -228,7 +279,16 @@ const Dashboard = ({ user, onLogout }) => {
               </form>
             </div>
             <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md">
-              <h3 className="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-100">Your Expenses</h3>
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-100">Your Expenses</h3>
+                <button 
+                  onClick={handleDownloadPdf}
+                  className="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                  title="Download as PDF"
+                >
+                  <DownloadIcon />
+                </button>
+              </div>
               <ul className="space-y-3 h-[400px] overflow-y-auto pr-2">
                 {expenses.length === 0 && <p className="text-gray-500 dark:text-gray-400">No expenses added yet.</p>}
                 {expenses.map(expense => (

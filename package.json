@@ -12,6 +12,8 @@
   "dependencies": {
     "@tailwindcss/cli": "^4.1.11",
     "firebase": "^11.10.0",
+    "jspdf": "^3.0.1",
+    "jspdf-autotable": "^5.0.2",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-google-recaptcha-v3": "^1.11.0",
