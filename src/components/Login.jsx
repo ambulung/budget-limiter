@@ -7,61 +7,66 @@ import {
 } from 'firebase/auth';
 import PasswordStrengthIndicator from './PasswordStrengthIndicator';
 
+// --- SVG Icons for Password Toggle ---
+const EyeIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+  </svg>
+);
+
+const EyeSlashedIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+  </svg>
+);
+
 const Login = () => {
   const [isLoginView, setIsLoginView] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
-  // State to track when an auth process is running
   const [isProcessing, setIsProcessing] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleGoogleLogin = async () => {
-    if (isProcessing) return; // Prevent action if already processing
+    if (isProcessing) return;
     setIsProcessing(true);
     setError('');
 
     try {
       await signInWithPopup(auth, googleProvider);
-      // On success, the main App component will handle the redirect, so we don't need to set isProcessing back to false here.
     } catch (err) {
-      // Gracefully handle the case where the user closes the popup
-      if (err.code === 'auth/cancelled-popup-request' || err.code === 'auth/popup-closed-by-user') {
-        console.log('Popup closed by user.'); // Log for debugging, but don't show user an error
-      } else {
+      if (err.code !== 'auth/cancelled-popup-request' && err.code !== 'auth/popup-closed-by-user') {
         setError('Failed to sign in with Google. Please try again.');
       }
     } finally {
-      // Re-enable the button if the login fails or is cancelled
       setIsProcessing(false);
     }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (isProcessing) return; // Prevent action if already processing
+    if (isProcessing) return;
     
     setIsProcessing(true);
     setError('');
 
     try {
-      // Client-side validation
       if (!email.includes('@') || !email.split('@')[1]?.includes('.')) {
         throw new Error('Please enter a full email address.');
       }
 
       if (isLoginView) {
-        // --- Login Logic ---
         await signInWithEmailAndPassword(auth, email, password);
       } else {
-        // --- Sign Up Logic ---
         if (password !== confirmPassword) {
           throw new Error('Passwords do not match.');
         }
         await createUserWithEmailAndPassword(auth, email, password);
       }
     } catch (err) {
-      // Handle custom errors and Firebase errors
       if (err instanceof Error) {
         setError(err.message);
       } else {
@@ -80,7 +85,6 @@ const Login = () => {
         }
       }
     } finally {
-      // Re-enable the button if the process fails
       setIsProcessing(false);
     }
   };
@@ -104,25 +108,46 @@ const Login = () => {
             required
             className="w-full p-3 bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="Password"
-            required
-            className="w-full p-3 bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
+          
+          <div className="relative">
+            <input
+              type={showPassword ? 'text' : 'password'}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Password"
+              required
+              className="w-full p-3 bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 pr-10"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+              title={showPassword ? 'Hide password' : 'Show password'}
+            >
+              {showPassword ? <EyeSlashedIcon /> : <EyeIcon />}
+            </button>
+          </div>
           
           {!isLoginView && (
             <>
-              <input
-                type="password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="Confirm Password"
-                required
-                className="w-full p-3 bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="Confirm Password"
+                  required
+                  className="w-full p-3 bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 pr-10"
+                />
+                 <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+                  title={showPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showPassword ? <EyeSlashedIcon /> : <EyeIcon />}
+                </button>
+              </div>
               <PasswordStrengthIndicator password={password} />
             </>
           )}
