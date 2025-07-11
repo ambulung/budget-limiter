@@ -1,317 +1,213 @@
-import React, { useState, useEffect } from 'react';
-import { db } from '../firebase';
-import { doc, getDoc, setDoc, collection, addDoc, onSnapshot, deleteDoc, query, orderBy, updateDoc } from "firebase/firestore";
-import { toast } from 'react-hot-toast';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
+import React, { useState } from 'react';
+import { auth, googleProvider } from '../firebase';
+import { 
+  createUserWithEmailAndPassword, 
+  signInWithEmailAndPassword, 
+  signInWithPopup 
+} from 'firebase/auth';
+import PasswordStrengthIndicator from './PasswordStrengthIndicator';
 
-// Component Imports
-import ThemeToggle from './ThemeToggle';
-import SetupModal from './SetupModal';
-import EditExpenseModal from './EditExpenseModal';
-import ConfirmationModal from './ConfirmationModal';
+// --- SVG Icons for Password Toggle ---
+const EyeIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+  </svg>
+);
 
-const DEFAULT_ICON_URL = '/default-icon.jpg';
+const EyeSlashedIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+  </svg>
+);
 
-// --- SVG Icons ---
-const SettingsIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg> );
-const EditIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.5L15.232 5.232z" /></svg> );
-const DeleteIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-4v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg> );
-const DownloadIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg> );
-const DeleteAllIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-4v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg> );
+const Login = ({ onGuestLogin }) => {
+  const [isLoginView, setIsLoginView] = useState(true);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [error, setError] = useState('');
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
-// Helper function for formatting money based on user's preference
-const formatMoney = (amount, currencySymbol, numberFormat) => {
-  const num = Number(amount);
-  if (isNaN(num)) return `${currencySymbol || '$'}0.00`;
-  const options = { minimumFractionDigits: 2, maximumFractionDigits: 2 };
-  switch (numberFormat) {
-    case 'dot': return `${currencySymbol}${new Intl.NumberFormat('de-DE', options).format(num)}`;
-    case 'none': return `${currencySymbol}${num.toFixed(2)}`;
-    case 'comma': default: return `${currencySymbol}${new Intl.NumberFormat('en-US', options).format(num)}`;
-  }
-};
+  const handleGoogleLogin = async () => {
+    if (isProcessing) return;
+    setIsProcessing(true);
+    setError('');
 
-// --- Main Component ---
-const Dashboard = ({ user, onLogout }) => {
-  const [showSetupModal, setShowSetupModal] = useState(false);
-  const [isNewUser, setIsNewUser] = useState(false);
-  const [editingExpense, setEditingExpense] = useState(null);
-  const [showConfirmDeleteAllModal, setShowConfirmDeleteAllModal] = useState(false);
-  
-  // State for user data, serves as local "database" for guests
-  const [budget, setBudget] = useState(1000);
-  const [expenses, setExpenses] = useState([]);
-  const [currency, setCurrency] = useState('$');
-  const [appTitle, setAppTitle] = useState("Guest's Budget");
-  const [appIcon, setAppIcon] = useState(DEFAULT_ICON_URL);
-  const [numberFormat, setNumberFormat] = useState('comma');
-  
-  // State for form inputs
-  const [newExpenseDesc, setNewExpenseDesc] = useState('');
-  const [newExpenseAmount, setNewExpenseAmount] = useState('');
-  const [newExpenseNotes, setNewExpenseNotes] = useState('');
-
-  const isGuest = user.isGuest === true;
-
-  const totalExpenses = expenses.reduce((sum, expense) => sum + expense.amount, 0);
-  const remainingBudget = budget - totalExpenses;
-  const progress = budget > 0 ? (totalExpenses / budget) * 100 : 0;
-  
-  // Effect to load data from Firestore OR set defaults for guest mode
-  useEffect(() => {
-    if (isGuest) {
-      setAppTitle("Guest's Budget");
-      setAppIcon(DEFAULT_ICON_URL);
-      setExpenses([]);
-      setBudget(1000);
-      setCurrency('$');
-      setNumberFormat('comma');
-      return;
-    }
-    
-    const userDocRef = doc(db, 'users', user.uid);
-    const fetchData = async () => {
-      const docSnap = await getDoc(userDocRef);
-      if (docSnap.exists()) {
-        setIsNewUser(false);
-        const userData = docSnap.data();
-        setBudget(userData.budget || 1000);
-        setCurrency(userData.currency || '$');
-        setAppTitle(userData.appTitle || `${user.displayName}'s Budget`);
-        setAppIcon(userData.appIcon || user.photoURL || DEFAULT_ICON_URL);
-        setNumberFormat(userData.numberFormat || 'comma');
-      } else {
-        setIsNewUser(true);
-        setShowSetupModal(true);
-        setAppTitle(`${user.displayName}'s Budget`);
-        setAppIcon(user.photoURL || DEFAULT_ICON_URL);
+    try {
+      await signInWithPopup(auth, googleProvider);
+    } catch (err) {
+      if (err.code !== 'auth/cancelled-popup-request' && err.code !== 'auth/popup-closed-by-user') {
+        setError('Failed to sign in with Google. Please try again.');
       }
-    };
-    fetchData();
-  }, [user, isGuest]);
-
-  // Effect to listen for real-time expense updates, only for logged-in users
-  useEffect(() => {
-    if (isGuest || !user.uid) return;
-    const expensesColRef = collection(db, 'users', user.uid, 'expenses');
-    const q = query(expensesColRef, orderBy('createdAt', 'desc'));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      setExpenses(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-    });
-    return () => unsubscribe();
-  }, [user.uid, isGuest]);
-
-  const handleSaveSettings = async (settings) => {
-    if (isGuest) {
-        setAppTitle(settings.appTitle);
-        setAppIcon(settings.appIcon);
-        setBudget(settings.budget);
-        setCurrency(settings.currency);
-        setNumberFormat(settings.numberFormat);
-        setShowSetupModal(false);
-        toast.success("Temporary settings applied!");
-        return;
+    } finally {
+      setIsProcessing(false);
     }
-    if (!settings.budget || settings.budget <= 0) return toast.error("Please enter a valid budget.");
-    const userDocRef = doc(db, 'users', user.uid);
-    try {
-      await setDoc(userDocRef, settings, { merge: true });
-      setShowSetupModal(false);
-      toast.success("Settings saved!");
-    } catch (error) { toast.error("Failed to save settings."); }
   };
-  
-  const handleAddExpense = async (e) => {
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    const amount = Number(newExpenseAmount);
-    if (!newExpenseDesc || isNaN(amount) || amount <= 0) return toast.error("Please enter a valid description and amount.");
+    if (isProcessing) return;
     
-    if (isGuest) {
-      const guestExpense = { id: `guest-${Date.now()}`, description: newExpenseDesc, amount, notes: newExpenseNotes, createdAt: { toDate: () => new Date() } };
-      setExpenses(prev => [guestExpense, ...prev]);
-      toast.success("Expense added for this session.");
-    } else {
-      const expensesColRef = collection(db, 'users', user.uid, 'expenses');
-      await addDoc(expensesColRef, { description: newExpenseDesc, amount, createdAt: new Date(), notes: newExpenseNotes });
-      toast.success("Expense added and saved!");
-    }
-    setNewExpenseDesc('');
-    setNewExpenseAmount('');
-    setNewExpenseNotes('');
-  };
+    setIsProcessing(true);
+    setError('');
 
-  const handleUpdateExpense = async (updatedExpense) => {
-    if (isGuest) {
-      setExpenses(prev => prev.map(exp => exp.id === updatedExpense.id ? updatedExpense : exp));
-      setEditingExpense(null);
-      toast.success("Expense updated for this session.");
-      return;
-    }
-    const expenseDocRef = doc(db, 'users', user.uid, 'expenses', updatedExpense.id);
     try {
-      await updateDoc(expenseDocRef, { description: updatedExpense.description, amount: updatedExpense.amount, notes: updatedExpense.notes });
-      toast.success("Expense updated!");
-      setEditingExpense(null);
-    } catch (error) { toast.error("Failed to update expense."); }
-  };
+      if (!email.includes('@') || !email.split('@')[1]?.includes('.')) {
+        throw new Error('Please enter a full email address.');
+      }
 
-  const handleDeleteExpense = async (expenseId) => {
-    if (isGuest) {
-      setExpenses(prev => prev.filter(exp => exp.id !== expenseId));
-      toast.success("Expense removed for this session.");
-      return;
+      if (isLoginView) {
+        await signInWithEmailAndPassword(auth, email, password);
+      } else {
+        if (password !== confirmPassword) {
+          throw new Error('Passwords do not match.');
+        }
+        await createUserWithEmailAndPassword(auth, email, password);
+      }
+    } catch (err) {
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        switch (err.code) {
+          case 'auth/invalid-credential':
+            setError('Incorrect email or password.');
+            break;
+          case 'auth/email-already-in-use':
+            setError('This email address is already in use.');
+            break;
+          case 'auth/weak-password':
+            setError('Password must be at least 6 characters.');
+            break;
+          default:
+            setError('An error occurred. Please try again.');
+        }
+      }
+    } finally {
+      setIsProcessing(false);
     }
-    const expenseDocRef = doc(db, 'users', user.uid, 'expenses', expenseId);
-    try {
-      const docSnap = await getDoc(expenseDocRef);
-      if (!docSnap.exists()) return;
-      const deletedData = docSnap.data();
-      await deleteDoc(expenseDocRef);
-      toast((t) => ( <span className="flex items-center gap-4"> Expense deleted. <button className="px-3 py-1 bg-blue-500 text-white rounded-md font-semibold" onClick={() => { handleUndoDelete(expenseId, deletedData); toast.dismiss(t.id); }}> Undo </button> </span> ), { duration: 6000 });
-    } catch (error) { toast.error("Failed to delete expense."); }
-  };
-  
-  const handleUndoDelete = async (idToRestore, dataToRestore) => {
-    if (isGuest) return;
-    const expenseDocRef = doc(db, 'users', user.uid, 'expenses', idToRestore);
-    try { await setDoc(expenseDocRef, dataToRestore); toast.success("Expense restored!"); } catch (error) { toast.error("Failed to restore expense."); }
-  };
-
-  const handleDeleteAllExpenses = async () => {
-    setShowConfirmDeleteAllModal(false);
-    if (expenses.length === 0) return toast.error("There are no expenses to delete.");
-    
-    if (isGuest) {
-      setExpenses([]);
-      toast.success("All expenses cleared for this session.");
-      return;
-    }
-    
-    const deletionPromise = Promise.all(expenses.map(expense => deleteDoc(doc(db, 'users', user.uid, 'expenses', expense.id))));
-    toast.promise(deletionPromise, { loading: 'Deleting all expenses...', success: 'All expenses deleted successfully!', error: 'Failed to delete all expenses.' });
-  };
-
-  const handleDownloadPdf = () => {
-    if (expenses.length === 0) return toast.error("No expenses to export.");
-    
-    const doc = new jsPDF();
-    doc.setFontSize(18);
-    doc.text("Expense Report", 14, 22);
-    doc.setFontSize(11);
-    doc.setTextColor(100);
-    doc.text(`For: ${appTitle}`, 14, 30);
-    doc.text(`Date: ${new Date().toLocaleDateString()}`, 14, 36);
-
-    const tableColumn = ["Date", "Description", "Notes", "Amount"];
-    const tableRows = expenses.map(expense => [
-      expense.createdAt.toDate().toLocaleDateString(),
-      expense.description,
-      expense.notes || "-",
-      formatMoney(expense.amount, currency, numberFormat)
-    ]);
-
-    autoTable(doc, {
-      head: [tableColumn],
-      body: tableRows,
-      startY: 45,
-      styles: { halign: 'left' },
-      headStyles: { fillColor: [36, 79, 148] },
-      columnStyles: { 3: { halign: 'right' } }
-    });
-
-    const finalY = doc.lastAutoTable.finalY;
-    doc.setFontSize(12);
-    doc.text(`Total Expenses: ${formatMoney(totalExpenses, currency, numberFormat)}`, 14, finalY + 10);
-    doc.text(`Remaining Budget: ${formatMoney(remainingBudget, currency, numberFormat)}`, 14, finalY + 17);
-
-    doc.save(`expense-report-${new Date().toISOString().slice(0, 10)}.pdf`);
-    toast.success("Report downloaded!");
-  };
-
-  const getProgressBarColor = () => {
-    if (progress >= 80) return 'bg-red-500';
-    if (progress >= 60) return 'bg-orange-500';
-    return 'bg-blue-600';
   };
 
   return (
-    <>
-      <SetupModal isOpen={showSetupModal} onSave={handleSaveSettings} onClose={() => setShowSetupModal(false)} user={user} initialSettings={{ appTitle, appIcon, budget, currency, numberFormat, isNewUser }} />
-      <EditExpenseModal isOpen={!!editingExpense} onClose={() => setEditingExpense(null)} onSave={handleUpdateExpense} expense={editingExpense} />
-      <ConfirmationModal isOpen={showConfirmDeleteAllModal} onClose={() => setShowConfirmDeleteAllModal(false)} onConfirm={handleDeleteAllExpenses} title="Delete All Expenses?" message="Are you sure you want to permanently delete all of your expenses? This action cannot be undone." />
+    <div className="flex flex-col items-center justify-center min-h-screen bg-slate-100 dark:bg-gray-900 p-4">
+      <div className="w-full max-w-md bg-white dark:bg-gray-800 p-8 rounded-xl shadow-2xl">
+        <h1 className="text-3xl font-bold mb-2 text-center text-gray-800 dark:text-gray-100">
+          {isLoginView ? 'Welcome Back!' : 'Create an Account'}
+        </h1>
+        <p className="text-gray-600 dark:text-gray-400 mb-6 text-center">
+          {isLoginView ? 'Sign in to access your budget.' : 'Get started by creating your account.'}
+        </p>
+        
+        <form onSubmit={handleSubmit} className="space-y-4" noValidate>
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="Email Address"
+            required
+            className="w-full p-3 bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          
+          <div className="relative">
+            <input
+              type={showPassword ? 'text' : 'password'}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Password"
+              required
+              className="w-full p-3 bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 pr-10"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+              title={showPassword ? 'Hide password' : 'Show password'}
+            >
+              {showPassword ? <EyeSlashedIcon /> : <EyeIcon />}
+            </button>
+          </div>
+          
+          {!isLoginView && (
+            <>
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="Confirm Password"
+                  required
+                  className="w-full p-3 bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 pr-10"
+                />
+                 <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+                  title={showPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showPassword ? <EyeSlashedIcon /> : <EyeIcon />}
+                </button>
+              </div>
+              <PasswordStrengthIndicator password={password} />
+            </>
+          )}
 
-      <div className="max-w-5xl mx-auto p-4 md:p-8">
-        <div className="flex justify-between items-center gap-4 mb-8">
-          <div className="flex items-center gap-3 min-w-0">
-            <img src={appIcon} alt="App Icon" className="w-16 h-16 object-cover flex-shrink-0" />
-            <h1 className="text-xl md:text-2xl font-bold text-gray-800 dark:text-gray-100 truncate">{appTitle}</h1>
-          </div>
-          <div className="flex items-center gap-4 flex-shrink-0">
-            <button onClick={() => setShowSetupModal(true)} className="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors" title="Settings"><SettingsIcon /></button>
-            <ThemeToggle />
-            <button onClick={onLogout} className={`px-4 py-2 text-white font-semibold rounded-lg shadow-md transition-all ${isGuest ? 'bg-blue-500 hover:bg-blue-600' : 'bg-red-500 hover:bg-red-600'}`}>{isGuest ? "Login / Sign Up" : "Logout"}</button>
-          </div>
+          {error && <p className="text-red-500 text-sm text-center">{error}</p>}
+
+          <button 
+            type="submit" 
+            className="w-full p-3 bg-blue-600 text-white font-bold rounded-lg shadow-md hover:bg-blue-700 transition-all disabled:bg-blue-400 disabled:cursor-not-allowed"
+            disabled={isProcessing}
+          >
+            {isProcessing ? 'Processing...' : (isLoginView ? 'Login' : 'Sign Up')}
+          </button>
+        </form>
+
+        <div className="mt-6 text-center">
+          <p className="text-sm text-gray-600 dark:text-gray-400">
+            {isLoginView ? "Don't have an account?" : 'Already have an account?'}
+            <button 
+              onClick={() => { 
+                if (isProcessing) return;
+                setIsLoginView(!isLoginView); 
+                setError(''); 
+              }} 
+              className="font-semibold text-blue-600 dark:text-blue-400 hover:underline ml-1"
+            >
+              {isLoginView ? 'Sign Up' : 'Login'}
+            </button>
+          </p>
         </div>
-        <main>
-          <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md mb-8">
-            <div className="flex justify-between items-center mb-2">
-              <div className="text-2xl font-bold text-gray-800 dark:text-gray-100">
-                {formatMoney(totalExpenses, currency, numberFormat)}
-                <span className="text-gray-400 dark:text-gray-500 text-lg"> / {formatMoney(budget, currency, numberFormat)}</span>
-              </div>
-            </div>
-            <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-4 mb-2">
-              <div className={`h-4 rounded-full transition-all duration-500 ${getProgressBarColor()}`} style={{ width: `${Math.min(progress, 100)}%` }}></div>
-            </div>
-            <p className="text-right font-medium text-gray-600 dark:text-gray-400">{formatMoney(remainingBudget, currency, numberFormat)} Remaining</p>
-          </div>
-          <div className="grid md:grid-cols-2 gap-8">
-            <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md">
-              <h3 className="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-100">Add New Expense</h3>
-              {isGuest && (
-                <div className="text-center p-4 bg-yellow-100 dark:bg-yellow-900/50 rounded-lg mb-4">
-                  <p className="text-sm font-medium text-yellow-800 dark:text-yellow-200">You are in Guest Mode. Progress will not be saved.</p>
-                </div>
-              )}
-              <form onSubmit={handleAddExpense} className="flex flex-col gap-4">
-                <input value={newExpenseDesc} onChange={(e) => setNewExpenseDesc(e.target.value)} placeholder="Description" className="p-3 bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                <input type="number" value={newExpenseAmount} onChange={(e) => setNewExpenseAmount(e.target.value)} placeholder="Amount" className="p-3 bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                <textarea value={newExpenseNotes} onChange={(e) => setNewExpenseNotes(e.target.value)} placeholder="Notes (optional)" rows="3" className="p-3 bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                <button type="submit" className="p-3 bg-green-500 text-white font-bold rounded-lg shadow-md hover:bg-green-600 transition-all">Add Expense</button>
-              </form>
-            </div>
-            <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-100">Your Expenses</h3>
-                <div className="flex items-center gap-2">
-                  <button onClick={handleDownloadPdf} className="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors" title="Download as PDF"><DownloadIcon /></button>
-                  <button onClick={() => setShowConfirmDeleteAllModal(true)} className="p-2 rounded-full text-red-500 hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors" title="Delete All Expenses"><DeleteAllIcon /></button>
-                </div>
-              </div>
-              <ul className="space-y-3 h-[400px] overflow-y-auto pr-2">
-                {expenses.length === 0 && <p className="text-gray-500 dark:text-gray-400">No expenses added yet.</p>}
-                {expenses.map(expense => (
-                  <li key={expense.id} className="flex justify-between items-start bg-slate-100 dark:bg-gray-700 p-3 rounded-lg">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-gray-700 dark:text-gray-200 break-words">{expense.description}</p>
-                      {expense.notes && ( <p className="text-sm italic text-gray-600 dark:text-gray-400 mt-1 break-words">{expense.notes}</p> )}
-                      {expense.createdAt && ( <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{expense.createdAt.toDate().toLocaleString()}</p> )}
-                    </div>
-                    <div className="flex items-center gap-2 ml-4 shrink-0">
-                      <span className="font-bold text-gray-800 dark:text-gray-100">{formatMoney(expense.amount, currency, numberFormat)}</span>
-                      <button onClick={() => setEditingExpense(expense)} className="text-blue-500 hover:text-blue-700 p-1 rounded-full hover:bg-blue-100 dark:hover:bg-blue-900/50" title="Edit Expense"><EditIcon /></button>
-                      <button onClick={() => handleDeleteExpense(expense.id)} className="text-red-500 hover:text-red-700 p-1 rounded-full hover:bg-red-100 dark:hover:bg-red-900/50" title="Delete Expense"><DeleteIcon /></button>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
-        </main>
+
+        <div className="my-4 flex items-center">
+          <div className="flex-grow border-t border-gray-300 dark:border-gray-600"></div>
+          <span className="mx-4 text-xs text-gray-500 dark:text-gray-400">OR</span>
+          <div className="flex-grow border-t border-gray-300 dark:border-gray-600"></div>
+        </div>
+
+        <button 
+          onClick={handleGoogleLogin} 
+          className="w-full flex items-center justify-center gap-3 px-6 py-3 border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-200 font-semibold rounded-lg shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+          disabled={isProcessing}
+        >
+          <svg className="w-6 h-6" viewBox="0 0 48 48">
+            <path fill="#FFC107" d="M43.611 20.083H42V20H24v8h11.303c-1.649 4.657-6.08 8-11.303 8c-6.627 0-12-5.373-12-12s5.373-12 12-12c3.059 0 5.842 1.154 7.961 3.039L38.802 9.92C34.553 6.186 29.65 4 24 4C12.955 4 4 12.955 4 24s8.955 20 20 20s20-8.955 20-20c0-1.341-.138-2.65-.389-3.917z"></path><path fill="#FF3D00" d="M6.306 14.691l6.571 4.819C14.655 15.108 18.961 12 24 12c3.059 0 5.842 1.154 7.961 3.039l5.841-5.841C34.553 6.186 29.65 4 24 4C16.318 4 9.656 8.337 6.306 14.691z"></path><path fill="#4CAF50" d="M24 44c5.166 0 9.86-1.977 13.409-5.192l-6.19-5.238C29.211 35.091 26.715 36 24 36c-5.202 0-9.619-3.317-11.283-7.946l-6.522 5.025C9.505 39.556 16.227 44 24 44z"></path><path fill="#1976D2" d="M43.611 20.083H24v8h11.303c-.792 2.443-2.343 4.465-4.542 5.856l6.19 5.238C42.012 35.836 44 30.138 44 24c0-1.341-.138-2.65-.389-3.917z"></path>
+          </svg>
+          {isProcessing ? 'Opening...' : 'Sign in with Google'}
+        </button>
+
+        <div className="mt-6 text-center">
+            <button 
+              onClick={onGuestLogin}
+              className="text-sm font-semibold text-gray-600 dark:text-gray-400 hover:underline disabled:opacity-50"
+              disabled={isProcessing}
+            >
+              Try without logging in
+            </button>
+        </div>
       </div>
-    </>
+    </div>
   );
 };
 
-export default Dashboard;
+export default Login;

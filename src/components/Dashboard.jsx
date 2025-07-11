@@ -24,21 +24,22 @@ const DeleteAllIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" className=
 const formatMoney = (amount, currencySymbol, numberFormat) => {
   const num = Number(amount);
   if (isNaN(num)) return `${currencySymbol || '$'}0.00`;
+
   const options = { minimumFractionDigits: 2, maximumFractionDigits: 2 };
+
   switch (numberFormat) {
-    case 'dot': return `${currencySymbol}${new Intl.NumberFormat('de-DE', options).format(num)}`;
-    case 'none': return `${currencySymbol}${num.toFixed(2)}`;
-    case 'comma': default: return `${currencySymbol}${new Intl.NumberFormat('en-US', options).format(num)}`;
+    case 'dot': // e.g., 1.000,00
+      return `${currencySymbol}${new Intl.NumberFormat('de-DE', options).format(num)}`;
+    case 'none': // e.g., 1000.00
+      return `${currencySymbol}${num.toFixed(2)}`;
+    case 'comma': // e.g., 1,000.00
+    default:
+      return `${currencySymbol}${new Intl.NumberFormat('en-US', options).format(num)}`;
   }
 };
 
 // --- Main Component ---
 const Dashboard = ({ user, onLogout }) => {
-  // Guard Clause: If the user prop is ever null or undefined, render nothing to prevent crashes.
-  if (!user) {
-    return null;
-  }
-
   const [showSetupModal, setShowSetupModal] = useState(false);
   const [isNewUser, setIsNewUser] = useState(false);
   const [editingExpense, setEditingExpense] = useState(null);
@@ -46,15 +47,15 @@ const Dashboard = ({ user, onLogout }) => {
   
   const [budget, setBudget] = useState(1000);
   const [expenses, setExpenses] = useState([]);
+  const [newExpenseDesc, setNewExpenseDesc] = useState('');
+  const [newExpenseAmount, setNewExpenseAmount] = useState('');
+  const [newExpenseNotes, setNewExpenseNotes] = useState('');
   const [currency, setCurrency] = useState('$');
   const [appTitle, setAppTitle] = useState("Guest's Budget");
   const [appIcon, setAppIcon] = useState(DEFAULT_ICON_URL);
   const [numberFormat, setNumberFormat] = useState('comma');
-  
-  const [newExpenseDesc, setNewExpenseDesc] = useState('');
-  const [newExpenseAmount, setNewExpenseAmount] = useState('');
-  const [newExpenseNotes, setNewExpenseNotes] = useState('');
 
+  // Flag to detect if the user is in guest mode
   const isGuest = user.isGuest === true;
 
   const totalExpenses = expenses.reduce((sum, expense) => sum + expense.amount, 0);
@@ -62,13 +63,9 @@ const Dashboard = ({ user, onLogout }) => {
   const progress = budget > 0 ? (totalExpenses / budget) * 100 : 0;
   
   useEffect(() => {
+    // Prevent Firestore calls for guests
     if (isGuest) {
-      setAppTitle("Guest's Budget");
-      setAppIcon(DEFAULT_ICON_URL);
-      setExpenses([]);
-      setBudget(1000);
-      setCurrency('$');
-      setNumberFormat('comma');
+      setExpenses([]); // Ensure expenses are empty for a new guest session
       return;
     }
     
@@ -94,7 +91,9 @@ const Dashboard = ({ user, onLogout }) => {
   }, [user, isGuest]);
 
   useEffect(() => {
+    // Prevent Firestore listener for guests
     if (isGuest || !user.uid) return;
+
     const expensesColRef = collection(db, 'users', user.uid, 'expenses');
     const q = query(expensesColRef, orderBy('createdAt', 'desc'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -103,99 +102,8 @@ const Dashboard = ({ user, onLogout }) => {
     return () => unsubscribe();
   }, [user.uid, isGuest]);
 
-  const handleSaveSettings = async (settings) => {
-    if (isGuest) {
-        setAppTitle(settings.appTitle);
-        setAppIcon(settings.appIcon);
-        setBudget(settings.budget);
-        setCurrency(settings.currency);
-        setNumberFormat(settings.numberFormat);
-        setShowSetupModal(false);
-        toast.success("Temporary settings applied!");
-        return;
-    }
-    if (!settings.budget || settings.budget <= 0) return toast.error("Please enter a valid budget.");
-    const userDocRef = doc(db, 'users', user.uid);
-    try {
-      await setDoc(userDocRef, settings, { merge: true });
-      setShowSetupModal(false);
-      toast.success("Settings saved!");
-    } catch (error) { toast.error("Failed to save settings."); }
-  };
-  
-  const handleAddExpense = async (e) => {
-    e.preventDefault();
-    const amount = Number(newExpenseAmount);
-    if (!newExpenseDesc || isNaN(amount) || amount <= 0) return toast.error("Please enter a valid description and amount.");
-    
-    if (isGuest) {
-      const guestExpense = { id: `guest-${Date.now()}`, description: newExpenseDesc, amount, notes: newExpenseNotes, createdAt: { toDate: () => new Date() } };
-      setExpenses(prev => [guestExpense, ...prev]);
-      toast.success("Expense added for this session.");
-    } else {
-      const expensesColRef = collection(db, 'users', user.uid, 'expenses');
-      await addDoc(expensesColRef, { description: newExpenseDesc, amount, createdAt: new Date(), notes: newExpenseNotes });
-      toast.success("Expense added and saved!");
-    }
-    setNewExpenseDesc('');
-    setNewExpenseAmount('');
-    setNewExpenseNotes('');
-  };
-
-  const handleUpdateExpense = async (updatedExpense) => {
-    if (isGuest) {
-      setExpenses(prev => prev.map(exp => exp.id === updatedExpense.id ? updatedExpense : exp));
-      setEditingExpense(null);
-      toast.success("Expense updated for this session.");
-      return;
-    }
-    const expenseDocRef = doc(db, 'users', user.uid, 'expenses', updatedExpense.id);
-    try {
-      await updateDoc(expenseDocRef, { description: updatedExpense.description, amount: updatedExpense.amount, notes: updatedExpense.notes });
-      toast.success("Expense updated!");
-      setEditingExpense(null);
-    } catch (error) { toast.error("Failed to update expense."); }
-  };
-
-  const handleDeleteExpense = async (expenseId) => {
-    if (isGuest) {
-      setExpenses(prev => prev.filter(exp => exp.id !== expenseId));
-      toast.success("Expense removed for this session.");
-      return;
-    }
-    const expenseDocRef = doc(db, 'users', user.uid, 'expenses', expenseId);
-    try {
-      const docSnap = await getDoc(expenseDocRef);
-      if (!docSnap.exists()) return;
-      const deletedData = docSnap.data();
-      await deleteDoc(expenseDocRef);
-      toast((t) => ( <span className="flex items-center gap-4"> Expense deleted. <button className="px-3 py-1 bg-blue-500 text-white rounded-md font-semibold" onClick={() => { handleUndoDelete(expenseId, deletedData); toast.dismiss(t.id); }}> Undo </button> </span> ), { duration: 6000 });
-    } catch (error) { toast.error("Failed to delete expense."); }
-  };
-  
-  const handleUndoDelete = async (idToRestore, dataToRestore) => {
-    if (isGuest) return;
-    const expenseDocRef = doc(db, 'users', user.uid, 'expenses', idToRestore);
-    try { await setDoc(expenseDocRef, dataToRestore); toast.success("Expense restored!"); } catch (error) { toast.error("Failed to restore expense."); }
-  };
-
-  const handleDeleteAllExpenses = async () => {
-    setShowConfirmDeleteAllModal(false);
-    if (expenses.length === 0) return toast.error("There are no expenses to delete.");
-    
-    if (isGuest) {
-      setExpenses([]);
-      toast.success("All expenses cleared for this session.");
-      return;
-    }
-    
-    const deletionPromise = Promise.all(expenses.map(expense => deleteDoc(doc(db, 'users', user.uid, 'expenses', expense.id))));
-    toast.promise(deletionPromise, { loading: 'Deleting all expenses...', success: 'All expenses deleted successfully!', error: 'Failed to delete all expenses.' });
-  };
-
   const handleDownloadPdf = () => {
     if (expenses.length === 0) return toast.error("No expenses to export.");
-    
     const doc = new jsPDF();
     doc.setFontSize(18);
     doc.text("Expense Report", 14, 22);
@@ -230,6 +138,117 @@ const Dashboard = ({ user, onLogout }) => {
     toast.success("Report downloaded!");
   };
 
+  const handleDeleteAllExpenses = async () => {
+    setShowConfirmDeleteAllModal(false);
+    if (isGuest || expenses.length === 0) return toast.error("There are no expenses to delete.");
+    
+    const deletionPromise = Promise.all(
+      expenses.map(expense => 
+        deleteDoc(doc(db, 'users', user.uid, 'expenses', expense.id))
+      )
+    );
+
+    toast.promise(deletionPromise, {
+      loading: 'Deleting all expenses...',
+      success: 'All expenses deleted successfully!',
+      error: 'Failed to delete all expenses.',
+    });
+  };
+
+  const handleSaveSettings = async (settings) => {
+    if (isGuest) return toast.error("Please sign up to save settings.");
+    if (!settings.budget || settings.budget <= 0) return toast.error("Please enter a valid budget.");
+    
+    const userDocRef = doc(db, 'users', user.uid);
+    try {
+      await setDoc(userDocRef, settings, { merge: true });
+      setBudget(settings.budget);
+      setCurrency(settings.currency);
+      setAppTitle(settings.appTitle);
+      setAppIcon(settings.appIcon);
+      setNumberFormat(settings.numberFormat);
+      setShowSetupModal(false);
+      toast.success("Settings saved!");
+    } catch (error) { toast.error("Failed to save settings."); console.error(error); }
+  };
+  
+  const handleAddExpense = async (e) => {
+    e.preventDefault();
+    const amount = Number(newExpenseAmount);
+    if (!newExpenseDesc || isNaN(amount) || amount <= 0) return toast.error("Please enter a valid description and amount.");
+    
+    if (isGuest) {
+        const guestExpense = {
+            id: `guest-${Date.now()}`,
+            description: newExpenseDesc,
+            amount: amount,
+            notes: newExpenseNotes,
+            createdAt: { toDate: () => new Date() } 
+        };
+        setExpenses(prev => [guestExpense, ...prev]);
+        toast.success("Expense added for this session.");
+    } else {
+        const expensesColRef = collection(db, 'users', user.uid, 'expenses');
+        await addDoc(expensesColRef, {
+          description: newExpenseDesc,
+          amount: amount,
+          createdAt: new Date(),
+          notes: newExpenseNotes,
+        });
+        toast.success("Expense added and saved!");
+    }
+    setNewExpenseDesc('');
+    setNewExpenseAmount('');
+    setNewExpenseNotes('');
+  };
+
+  const handleUpdateExpense = async (updatedExpense) => {
+    if (isGuest) return;
+    const expenseDocRef = doc(db, 'users', user.uid, 'expenses', updatedExpense.id);
+    try {
+      await updateDoc(expenseDocRef, {
+        description: updatedExpense.description,
+        amount: updatedExpense.amount,
+        notes: updatedExpense.notes,
+      });
+      toast.success("Expense updated!");
+      setEditingExpense(null);
+    } catch (error) { toast.error("Failed to update expense."); }
+  };
+
+  const handleDeleteExpense = async (expenseId) => {
+    if (isGuest) {
+        setExpenses(expenses.filter(expense => expense.id !== expenseId));
+        toast.success("Expense removed for this session.");
+        return;
+    }
+
+    const expenseDocRef = doc(db, 'users', user.uid, 'expenses', expenseId);
+    try {
+      const docSnap = await getDoc(expenseDocRef);
+      if (!docSnap.exists()) return;
+      const deletedData = docSnap.data();
+      await deleteDoc(expenseDocRef);
+      toast((t) => (
+        <span className="flex items-center gap-4">
+          Expense deleted.
+          <button className="px-3 py-1 bg-blue-500 text-white rounded-md font-semibold" onClick={() => { handleUndoDelete(expenseId, deletedData); toast.dismiss(t.id); }}>
+            Undo
+          </button>
+        </span>
+      ), { duration: 6000 });
+    } catch (error) { toast.error("Failed to delete expense."); }
+  };
+
+  const handleUndoDelete = async (idToRestore, dataToRestore) => {
+    if (isGuest) return;
+    const expenseDocRef = doc(db, 'users', user.uid, 'expenses', idToRestore);
+    try {
+      await setDoc(expenseDocRef, dataToRestore);
+      toast.success("Expense restored!");
+    } catch (error) { toast.error("Failed to restore expense."); }
+  };
+
   const getProgressBarColor = () => {
     if (progress >= 80) return 'bg-red-500';
     if (progress >= 60) return 'bg-orange-500';
@@ -246,12 +265,18 @@ const Dashboard = ({ user, onLogout }) => {
         <div className="flex justify-between items-center gap-4 mb-8">
           <div className="flex items-center gap-3 min-w-0">
             <img src={appIcon} alt="App Icon" className="w-16 h-16 object-cover flex-shrink-0" />
-            <h1 className="text-xl md:text-2xl font-bold text-gray-800 dark:text-gray-100 truncate">{appTitle}</h1>
+            <h1 className="text-xl md:text-2xl font-bold text-gray-800 dark:text-gray-100 truncate">
+              {appTitle}
+            </h1>
           </div>
           <div className="flex items-center gap-4 flex-shrink-0">
-            <button onClick={() => setShowSetupModal(true)} className="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors" title="Settings"><SettingsIcon /></button>
+            <button onClick={() => setShowSetupModal(true)} className="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" title="Settings" disabled={isGuest}>
+              <SettingsIcon />
+            </button>
             <ThemeToggle />
-            <button onClick={onLogout} className={`px-4 py-2 text-white font-semibold rounded-lg shadow-md transition-all ${isGuest ? 'bg-blue-500 hover:bg-blue-600' : 'bg-red-500 hover:bg-red-600'}`}>{isGuest ? "Login / Sign Up" : "Logout"}</button>
+            <button onClick={onLogout} className={`px-4 py-2 text-white font-semibold rounded-lg shadow-md transition-all ${isGuest ? 'bg-blue-500 hover:bg-blue-600' : 'bg-red-500 hover:bg-red-600'}`}>
+              {isGuest ? "Login / Sign Up" : "Logout"}
+            </button>
           </div>
         </div>
         <main>
@@ -265,20 +290,30 @@ const Dashboard = ({ user, onLogout }) => {
             <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-4 mb-2">
               <div className={`h-4 rounded-full transition-all duration-500 ${getProgressBarColor()}`} style={{ width: `${Math.min(progress, 100)}%` }}></div>
             </div>
-            <p className="text-right font-medium text-gray-600 dark:text-gray-400">{formatMoney(remainingBudget, currency, numberFormat)} Remaining</p>
+            <p className="text-right font-medium text-gray-600 dark:text-gray-400">
+              {formatMoney(remainingBudget, currency, numberFormat)} Remaining
+            </p>
           </div>
           <div className="grid md:grid-cols-2 gap-8">
             <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md">
               <h3 className="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-100">Add New Expense</h3>
               {isGuest && (
                 <div className="text-center p-4 bg-yellow-100 dark:bg-yellow-900/50 rounded-lg mb-4">
-                  <p className="text-sm font-medium text-yellow-800 dark:text-yellow-200">You are in Guest Mode. Progress will not be saved.</p>
+                  <p className="text-sm font-medium text-yellow-800 dark:text-yellow-200">
+                    You are in Guest Mode. Progress will not be saved.
+                  </p>
                 </div>
               )}
               <form onSubmit={handleAddExpense} className="flex flex-col gap-4">
                 <input value={newExpenseDesc} onChange={(e) => setNewExpenseDesc(e.target.value)} placeholder="Description" className="p-3 bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
                 <input type="number" value={newExpenseAmount} onChange={(e) => setNewExpenseAmount(e.target.value)} placeholder="Amount" className="p-3 bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                <textarea value={newExpenseNotes} onChange={(e) => setNewExpenseNotes(e.target.value)} placeholder="Notes (optional)" rows="3" className="p-3 bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                <textarea 
+                  value={newExpenseNotes} 
+                  onChange={(e) => setNewExpenseNotes(e.target.value)} 
+                  placeholder="Notes (optional)" 
+                  rows="3"
+                  className="p-3 bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
                 <button type="submit" className="p-3 bg-green-500 text-white font-bold rounded-lg shadow-md hover:bg-green-600 transition-all">Add Expense</button>
               </form>
             </div>
@@ -286,8 +321,12 @@ const Dashboard = ({ user, onLogout }) => {
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-100">Your Expenses</h3>
                 <div className="flex items-center gap-2">
-                  <button onClick={handleDownloadPdf} className="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors" title="Download as PDF"><DownloadIcon /></button>
-                  <button onClick={() => setShowConfirmDeleteAllModal(true)} className="p-2 rounded-full text-red-500 hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors" title="Delete All Expenses"><DeleteAllIcon /></button>
+                  <button onClick={handleDownloadPdf} className="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors" title="Download as PDF">
+                    <DownloadIcon />
+                  </button>
+                  <button onClick={() => setShowConfirmDeleteAllModal(true)} className="p-2 rounded-full text-red-500 hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" title="Delete All Expenses" disabled={isGuest}>
+                    <DeleteAllIcon />
+                  </button>
                 </div>
               </div>
               <ul className="space-y-3 h-[400px] overflow-y-auto pr-2">
@@ -301,8 +340,12 @@ const Dashboard = ({ user, onLogout }) => {
                     </div>
                     <div className="flex items-center gap-2 ml-4 shrink-0">
                       <span className="font-bold text-gray-800 dark:text-gray-100">{formatMoney(expense.amount, currency, numberFormat)}</span>
-                      <button onClick={() => setEditingExpense(expense)} className="text-blue-500 hover:text-blue-700 p-1 rounded-full hover:bg-blue-100 dark:hover:bg-blue-900/50" title="Edit Expense"><EditIcon /></button>
-                      <button onClick={() => handleDeleteExpense(expense.id)} className="text-red-500 hover:text-red-700 p-1 rounded-full hover:bg-red-100 dark:hover:bg-red-900/50" title="Delete Expense"><DeleteIcon /></button>
+                      {!isGuest && (
+                        <>
+                          <button onClick={() => setEditingExpense(expense)} className="text-blue-500 hover:text-blue-700 p-1 rounded-full hover:bg-blue-100 dark:hover:bg-blue-900/50" title="Edit Expense"><EditIcon /></button>
+                          <button onClick={() => handleDeleteExpense(expense.id)} className="text-red-500 hover:text-red-700 p-1 rounded-full hover:bg-red-100 dark:hover:bg-red-900/50" title="Delete Expense"><DeleteIcon /></button>
+                        </>
+                      )}
                     </div>
                   </li>
                 ))}
