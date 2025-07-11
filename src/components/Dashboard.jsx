@@ -2,9 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { db } from '../firebase';
 import { doc, getDoc, setDoc, collection, addDoc, onSnapshot, deleteDoc, query, orderBy, updateDoc } from "firebase/firestore";
 import { toast } from 'react-hot-toast';
-import jsPDF from 'jspdf';
-import 'jspdf-autotable'; // This import patches jsPDF with the autoTable plugin
 
+// PDF Generation Libraries
+import jsPDF from 'jspdf';
+// CORRECTED IMPORT: Import autoTable directly to avoid production build issues.
+import autoTable from 'jspdf-autotable'; 
+
+// Component Imports
 import ThemeToggle from './ThemeToggle';
 import SetupModal from './SetupModal';
 import EditExpenseModal from './EditExpenseModal';
@@ -17,7 +21,7 @@ const EditIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" className="h-5 
 const DeleteIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-4v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg> );
 const DownloadIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg> );
 
-// Helper function for formatting money based on user's preference
+// --- Helper Functions ---
 const formatMoney = (amount, currencySymbol, numberFormat) => {
   const num = Number(amount);
   if (isNaN(num)) return `${currencySymbol || '$'}0.00`;
@@ -35,6 +39,7 @@ const formatMoney = (amount, currencySymbol, numberFormat) => {
   }
 };
 
+// --- Main Component ---
 const Dashboard = ({ user, onLogout }) => {
   const [showSetupModal, setShowSetupModal] = useState(false);
   const [isNewUser, setIsNewUser] = useState(false);
@@ -113,7 +118,8 @@ const Dashboard = ({ user, onLogout }) => {
       tableRows.push(expenseData);
     });
 
-    doc.autoTable({
+    // CORRECTED PDF CALL: Use autoTable(doc, ...)
+    autoTable(doc, {
       head: [tableColumn],
       body: tableRows,
       startY: 45,
@@ -122,7 +128,9 @@ const Dashboard = ({ user, onLogout }) => {
       columnStyles: { 3: { halign: 'right' } }
     });
 
-    const finalY = doc.autoTable.previous.finalY;
+    // CORRECTED Y-POSITION: Use doc.lastAutoTable.finalY
+    const finalY = doc.lastAutoTable.finalY;
+
     doc.setFontSize(12);
     doc.text(`Total Expenses: ${formatMoney(totalExpenses, currency, numberFormat)}`, 14, finalY + 10);
     doc.text(`Remaining Budget: ${formatMoney(remainingBudget, currency, numberFormat)}`, 14, finalY + 17);
