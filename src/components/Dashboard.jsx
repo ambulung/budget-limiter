@@ -20,7 +20,7 @@ const DeleteIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" className="h-
 const DownloadIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg> );
 const DeleteAllIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-4v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg> );
 
-// Helper function for formatting money based on user's preference
+// --- Helper Functions ---
 const formatMoney = (amount, currencySymbol, numberFormat) => {
   const num = Number(amount);
   if (isNaN(num)) return `${currencySymbol || '$'}0.00`;
@@ -65,8 +65,8 @@ const Dashboard = ({ user, onLogout }) => {
   useEffect(() => {
     // Prevent Firestore calls for guests
     if (isGuest) {
-      setExpenses([]); // Ensure expenses are empty for a new guest session
-      return;
+        setExpenses([]); // Ensure expenses are empty for a new guest session
+        return;
     }
     
     const userDocRef = doc(db, 'users', user.uid);
@@ -109,7 +109,7 @@ const Dashboard = ({ user, onLogout }) => {
     doc.text("Expense Report", 14, 22);
     doc.setFontSize(11);
     doc.setTextColor(100);
-    doc.text(`For: ${appTitle}`, 14, 30);
+    doc.text(`For: ${isGuest ? "Guest's Budget" : appTitle}`, 14, 30);
     doc.text(`Date: ${new Date().toLocaleDateString()}`, 14, 36);
 
     const tableColumn = ["Date", "Description", "Notes", "Amount"];
@@ -140,7 +140,12 @@ const Dashboard = ({ user, onLogout }) => {
 
   const handleDeleteAllExpenses = async () => {
     setShowConfirmDeleteAllModal(false);
-    if (isGuest || expenses.length === 0) return toast.error("There are no expenses to delete.");
+    if (isGuest) {
+        setExpenses([]);
+        toast.success("All expenses cleared for this session.");
+        return;
+    }
+    if (expenses.length === 0) return toast.error("There are no expenses to delete.");
     
     const deletionPromise = Promise.all(
       expenses.map(expense => 
@@ -156,20 +161,27 @@ const Dashboard = ({ user, onLogout }) => {
   };
 
   const handleSaveSettings = async (settings) => {
-    if (isGuest) return toast.error("Please sign up to save settings.");
     if (!settings.budget || settings.budget <= 0) return toast.error("Please enter a valid budget.");
-    
-    const userDocRef = doc(db, 'users', user.uid);
-    try {
-      await setDoc(userDocRef, settings, { merge: true });
+
+    if (isGuest) {
       setBudget(settings.budget);
       setCurrency(settings.currency);
-      setAppTitle(settings.appTitle);
-      setAppIcon(settings.appIcon);
       setNumberFormat(settings.numberFormat);
       setShowSetupModal(false);
-      toast.success("Settings saved!");
-    } catch (error) { toast.error("Failed to save settings."); console.error(error); }
+      toast.success("Settings updated for this session!");
+    } else {
+      const userDocRef = doc(db, 'users', user.uid);
+      try {
+        await setDoc(userDocRef, settings, { merge: true });
+        setBudget(settings.budget);
+        setCurrency(settings.currency);
+        setAppTitle(settings.appTitle);
+        setAppIcon(settings.appIcon);
+        setNumberFormat(settings.numberFormat);
+        setShowSetupModal(false);
+        toast.success("Settings saved!");
+      } catch (error) { toast.error("Failed to save settings."); console.error(error); }
+    }
   };
   
   const handleAddExpense = async (e) => {
@@ -257,7 +269,7 @@ const Dashboard = ({ user, onLogout }) => {
 
   return (
     <>
-      <SetupModal isOpen={showSetupModal} onSave={handleSaveSettings} onClose={() => setShowSetupModal(false)} user={user} initialSettings={{ appTitle, appIcon, budget, currency, numberFormat, isNewUser }} />
+      <SetupModal isOpen={showSetupModal} onSave={handleSaveSettings} onClose={() => setShowSetupModal(false)} user={user} initialSettings={{ appTitle, appIcon, budget, currency, numberFormat, isNewUser, isGuest }} />
       <EditExpenseModal isOpen={!!editingExpense} onClose={() => setEditingExpense(null)} onSave={handleUpdateExpense} expense={editingExpense} />
       <ConfirmationModal isOpen={showConfirmDeleteAllModal} onClose={() => setShowConfirmDeleteAllModal(false)} onConfirm={handleDeleteAllExpenses} title="Delete All Expenses?" message="Are you sure you want to permanently delete all of your expenses? This action cannot be undone." />
 
@@ -266,11 +278,11 @@ const Dashboard = ({ user, onLogout }) => {
           <div className="flex items-center gap-3 min-w-0">
             <img src={appIcon} alt="App Icon" className="w-16 h-16 object-cover flex-shrink-0" />
             <h1 className="text-xl md:text-2xl font-bold text-gray-800 dark:text-gray-100 truncate">
-              {appTitle}
+              {isGuest ? "Guest's Budget" : appTitle}
             </h1>
           </div>
           <div className="flex items-center gap-4 flex-shrink-0">
-            <button onClick={() => setShowSetupModal(true)} className="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" title="Settings" disabled={isGuest}>
+            <button onClick={() => setShowSetupModal(true)} className="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors" title="Settings">
               <SettingsIcon />
             </button>
             <ThemeToggle />
@@ -324,7 +336,7 @@ const Dashboard = ({ user, onLogout }) => {
                   <button onClick={handleDownloadPdf} className="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors" title="Download as PDF">
                     <DownloadIcon />
                   </button>
-                  <button onClick={() => setShowConfirmDeleteAllModal(true)} className="p-2 rounded-full text-red-500 hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" title="Delete All Expenses" disabled={isGuest}>
+                  <button onClick={() => setShowConfirmDeleteAllModal(true)} className="p-2 rounded-full text-red-500 hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors" title="Delete All Expenses">
                     <DeleteAllIcon />
                   </button>
                 </div>
@@ -340,11 +352,13 @@ const Dashboard = ({ user, onLogout }) => {
                     </div>
                     <div className="flex items-center gap-2 ml-4 shrink-0">
                       <span className="font-bold text-gray-800 dark:text-gray-100">{formatMoney(expense.amount, currency, numberFormat)}</span>
-                      {!isGuest && (
+                      {!isGuest ? (
                         <>
                           <button onClick={() => setEditingExpense(expense)} className="text-blue-500 hover:text-blue-700 p-1 rounded-full hover:bg-blue-100 dark:hover:bg-blue-900/50" title="Edit Expense"><EditIcon /></button>
                           <button onClick={() => handleDeleteExpense(expense.id)} className="text-red-500 hover:text-red-700 p-1 rounded-full hover:bg-red-100 dark:hover:bg-red-900/50" title="Delete Expense"><DeleteIcon /></button>
                         </>
+                      ) : (
+                        <button onClick={() => handleDeleteExpense(expense.id)} className="text-red-500 hover:text-red-700 p-1 rounded-full hover:bg-red-100 dark:hover:bg-red-900/50" title="Delete Expense"><DeleteIcon /></button>
                       )}
                     </div>
                   </li>

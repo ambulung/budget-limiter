@@ -10,8 +10,10 @@ const SetupModal = ({ isOpen, onSave, onClose, user, initialSettings }) => {
   const [currency, setCurrency] = useState('$');
   const [currentIconUrl, setCurrentIconUrl] = useState('');
   const [isUploading, setIsUploading] = useState(false);
-  // State for the new number formatting option
   const [numberFormat, setNumberFormat] = useState('comma');
+
+  // Destructure isGuest from initialSettings for easier and cleaner use
+  const { isGuest } = initialSettings;
 
   // When the modal opens, populate the form with existing settings or defaults
   useEffect(() => {
@@ -56,13 +58,14 @@ const SetupModal = ({ isOpen, onSave, onClose, user, initialSettings }) => {
       budget: Number(budget),
       currency: currency,
       appIcon: currentIconUrl,
-      numberFormat: numberFormat, // Pass the new setting back on save
+      numberFormat: numberFormat,
     });
   };
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-60 z-50 flex justify-center items-center p-4">
       <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-2xl w-full max-w-md relative">
+        
         <button onClick={onClose} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors">
           <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -72,21 +75,30 @@ const SetupModal = ({ isOpen, onSave, onClose, user, initialSettings }) => {
         <h2 className="text-2xl font-bold mb-4 text-gray-800 dark:text-gray-100">Settings</h2>
         <p className="mb-6 text-gray-600 dark:text-gray-400">
           {initialSettings.isNewUser ? 'Welcome! Please configure your budget to begin.' : 'Update your application settings below.'}
+          {isGuest && <span className="block mt-1 text-sm text-yellow-600 dark:text-yellow-400">Settings are for this session only and will not be saved.</span>}
         </p>
 
         <form onSubmit={handleSave} className="flex flex-col gap-4">
-          <div>
+          <div className={isGuest ? 'opacity-50' : ''}>
             <label className="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">App Title</label>
-            <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} className="w-full p-3 bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            <input 
+              type="text" 
+              value={title} 
+              onChange={(e) => setTitle(e.target.value)} 
+              className="w-full p-3 bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              disabled={isGuest}
+              title={isGuest ? 'App Title cannot be changed in Guest Mode' : ''}
+            />
           </div>
-          <div>
+          <div className={isGuest ? 'opacity-50' : ''}>
             <label className="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Upload Icon</label>
             <input 
               type="file"
               onChange={handleIconUpload}
               accept="image/png, image/jpeg, image/gif"
-              disabled={isUploading}
-              className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 dark:file:bg-gray-700 dark:file:text-gray-200 dark:hover:file:bg-gray-600 cursor-pointer"
+              disabled={isUploading || isGuest}
+              className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 dark:file:bg-gray-700 dark:file:text-gray-200 dark:hover:file:bg-gray-600 cursor-pointer disabled:cursor-not-allowed"
+              title={isGuest ? 'Icon upload is disabled in Guest Mode' : ''}
             />
           </div>
           <div className="flex gap-4">
@@ -102,7 +114,7 @@ const SetupModal = ({ isOpen, onSave, onClose, user, initialSettings }) => {
                   <option value="€">EUR (€)</option>
                   <option value="£">GBP (£)</option>
                   <option value="¥">JPY (¥)</option>
-                  <option value="BND">BND (BND)</option>
+                  <option value="B$">BND (B$)</option>
                   <option value="₹">INR (₹)</option>
                   <option value="RM">MYR (RM)</option>
                 </select>
@@ -116,7 +128,7 @@ const SetupModal = ({ isOpen, onSave, onClose, user, initialSettings }) => {
           <div>
             <label className="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Number Formatting</label>
             <div className="relative">
-                <select value={numberFormat} onChange={(e) => setNumberFormat(e.target.value)} className="w-full p-3 h-full bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none">
+                <select value={numberFormat} onChange={(e) => setNumberFormat(e.target.value)} className="w-full p-3 h-full bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-gray-200 border border-gCray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none">
                   <option value="comma">Comma separator (1,000.00)</option>
                   <option value="dot">Dot separator (1.000,00)</option>
                   <option value="none">No separator (1000.00)</option>
