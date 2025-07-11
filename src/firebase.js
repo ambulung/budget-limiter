@@ -1,11 +1,11 @@
 // src/firebase.js
 
 import { initializeApp } from "firebase/app";
-// IMPORTANT: Add these imports for Auth and Firestore
 import { getAuth, GoogleAuthProvider } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
+import { getStorage } from "firebase/storage"; // <-- ADD THIS IMPORT
 
-// Your web app's Firebase configuration, now loaded securely from environment variables
+// Your web app's Firebase configuration from your .env.local file
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_API_KEY,
   authDomain: import.meta.env.VITE_AUTH_DOMAIN,
@@ -19,7 +19,8 @@ const firebaseConfig = {
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 
-// Export the services you'll need in other parts of your app
+// Initialize and export Firebase services
 export const auth = getAuth(app);
-export const googleProvider = new GoogleAuthProvider(); // For Google Login
-export const db = getFirestore(app); // The Firestore Database
+export const googleProvider = new GoogleAuthProvider();
+export const db = getFirestore(app);
+export const storage = getStorage(app); // <-- ADD THIS LINE TO INITIALIZE AND EXPORT STORAGE

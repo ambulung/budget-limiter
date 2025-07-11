@@ -1,8 +1,11 @@
+// src/App.jsx
 import React, { useState, useEffect } from 'react';
-import { onAuthStateChanged, signInWithPopup, signOut } from "firebase/auth";
-import { auth, googleProvider } from './firebase';
+import { onAuthStateChanged, signOut } from "firebase/auth";
+import { auth } from './firebase';
 import { Toaster, toast } from 'react-hot-toast';
 
+// --- 1. IMPORT YOUR NEW HEADER AND EXISTING COMPONENTS ---
+import Header from './components/Header';
 import Dashboard from './components/Dashboard';
 import Login from './components/Login';
 
@@ -17,15 +20,6 @@ function App() {
     });
     return () => unsubscribe();
   }, []);
-
-  const handleLogin = async () => {
-    try {
-      await signInWithPopup(auth, googleProvider);
-    } catch (error) {
-      console.error("Authentication error:", error);
-      toast.error("Failed to sign in.");
-    }
-  };
 
   const handleLogout = async () => {
     try {
@@ -46,13 +40,18 @@ function App() {
 
   return (
     <div className="min-h-screen bg-slate-100 dark:bg-gray-900">
-      <Toaster position="top-center" reverseOrder={false} />
+      {/* --- 2. RENDER THE HEADER HERE, AT THE TOP LEVEL --- */}
+      <Header />
       
-      {user ? (
-        <Dashboard user={user} onLogout={handleLogout} />
-      ) : (
-        <Login onLogin={handleLogin} />
-      )}
+      <main>
+        <Toaster position="top-center" reverseOrder={false} />
+        
+        {user ? (
+          <Dashboard user={user} onLogout={handleLogout} />
+        ) : (
+          <Login />
+        )}
+      </main>
     </div>
   );
 }
