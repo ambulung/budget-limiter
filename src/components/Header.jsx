@@ -8,8 +8,8 @@ const Header = () => {
         <div className="flex items-center justify-start h-16">
           {/* This div keeps the text aligned to the right */}
           <div className="flex items-center">
-            <h1 className="text-white font-sans text-xl font">
-              BUDGET LIMIT
+            <h1 className="text-white font-sans text-2xl font-extrabold">
+              BUDGET.LIMIT
             </h1>
           </div>
         </div>

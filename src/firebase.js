@@ -3,7 +3,9 @@
 import { initializeApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
-import { getStorage } from "firebase/storage"; // <-- ADD THIS IMPORT
+import { getStorage } from "firebase/storage";
+// --- 1. Import App Check and the reCAPTCHA provider ---
+import { initializeAppCheck, ReCaptchaV3Provider } from "firebase/app-check";
 
 // Your web app's Firebase configuration from your .env.local file
 const firebaseConfig = {
@@ -19,8 +21,18 @@ const firebaseConfig = {
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 
+// --- 2. Initialize App Check ---
+// This connects Firebase to your reCAPTCHA v3 site key.
+const appCheck = initializeAppCheck(app, {
+  provider: new ReCaptchaV3Provider(import.meta.env.VITE_RECAPTCHA_SITE_KEY),
+  
+  // Optional: Set to true for automatic token refresh.
+  isTokenAutoRefreshEnabled: true
+});
+
+
 // Initialize and export Firebase services
 export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
 export const db = getFirestore(app);
-export const storage = getStorage(app); // <-- ADD THIS LINE TO INITIALIZE AND EXPORT STORAGE
+export const storage = getStorage(app);
