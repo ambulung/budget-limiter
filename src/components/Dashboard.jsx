@@ -347,10 +347,10 @@ const Dashboard = ({ user, onLogout }) => {
                   value={addBudgetAmount}
                   onChange={(e) => setAddBudgetAmount(e.target.value)}
                   placeholder="Amount to add to budget"
+                  step="0.01"
                   min="0"
                   className="w-full flex-grow p-2 bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
-                {/* --- MODIFICATION: Added w-24 for fixed width --- */}
                 <button type="submit" className="w-24 px-4 py-2 bg-blue-500 text-white font-semibold rounded-lg shadow-sm hover:bg-blue-600 transition-all flex-shrink-0">
                   Add
                 </button>
@@ -361,10 +361,10 @@ const Dashboard = ({ user, onLogout }) => {
                   value={removeBudgetAmount}
                   onChange={(e) => setRemoveBudgetAmount(e.target.value)}
                   placeholder="Amount to remove from budget"
+                  step="0.01"
                   min="0"
                   className="w-full flex-grow p-2 bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
                 />
-                {/* --- MODIFICATION: Added w-24 for fixed width --- */}
                 <button type="submit" className="w-24 px-4 py-2 bg-red-500 text-white font-semibold rounded-lg shadow-sm hover:bg-red-600 transition-all flex-shrink-0">
                   Remove
                 </button>
@@ -383,7 +383,7 @@ const Dashboard = ({ user, onLogout }) => {
               )}
               <form onSubmit={handleAddExpense} className="flex flex-col gap-4">
                 <input value={newExpenseDesc} onChange={(e) => setNewExpenseDesc(e.target.value)} placeholder="Description" className="p-3 bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                <input type="number" value={newExpenseAmount} onChange={(e) => setNewExpenseAmount(e.target.value)} placeholder="Amount" className="p-3 bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                <input type="number" step="0.01" value={newExpenseAmount} onChange={(e) => setNewExpenseAmount(e.target.value)} placeholder="Amount" className="p-3 bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
                 <textarea 
                   value={newExpenseNotes} 
                   onChange={(e) => setNewExpenseNotes(e.target.value)} 
