@@ -1,13 +1,14 @@
 // src/App.jsx
+
 import React, { useState, useEffect } from 'react';
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import { auth } from './firebase';
 import { Toaster, toast } from 'react-hot-toast';
 
-// --- 1. IMPORT YOUR NEW HEADER AND EXISTING COMPONENTS ---
 import Header from './components/Header';
 import Dashboard from './components/Dashboard';
 import Login from './components/Login';
+import Footer from './components/Footer'; // <-- 1. IMPORT THE NEW FOOTER
 
 function App() {
   const [user, setUser] = useState(null);
@@ -39,19 +40,22 @@ function App() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-100 dark:bg-gray-900">
-      {/* --- 2. RENDER THE HEADER HERE, AT THE TOP LEVEL --- */}
+    // <-- 2. MODIFY THE LAYOUT to make the footer sticky -->
+    <div className="min-h-screen bg-slate-100 dark:bg-gray-900 flex flex-col">
+      <Toaster position="top-center" reverseOrder={false} />
       <Header />
       
-      <main>
-        <Toaster position="top-center" reverseOrder={false} />
-        
+      {/* 'flex-grow' makes the main content take up all available space, pushing the footer down */}
+      <main className="flex-grow">
         {user ? (
           <Dashboard user={user} onLogout={handleLogout} />
         ) : (
           <Login />
         )}
       </main>
+
+      {/* <-- 3. ADD THE FOOTER COMPONENT AT THE END --> */}
+      <Footer />
     </div>
   );
 }
