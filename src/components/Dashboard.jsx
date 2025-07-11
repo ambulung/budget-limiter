@@ -20,7 +20,7 @@ const DeleteIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" className="h-
 const DownloadIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg> );
 const DeleteAllIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-4v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg> );
 
-// --- Helper Functions ---
+// Helper function for formatting money based on user's preference
 const formatMoney = (amount, currencySymbol, numberFormat) => {
   const num = Number(amount);
   if (isNaN(num)) return `${currencySymbol || '$'}0.00`;
@@ -28,11 +28,11 @@ const formatMoney = (amount, currencySymbol, numberFormat) => {
   const options = { minimumFractionDigits: 2, maximumFractionDigits: 2 };
 
   switch (numberFormat) {
-    case 'dot':
+    case 'dot': // e.g., 1.000,00
       return `${currencySymbol}${new Intl.NumberFormat('de-DE', options).format(num)}`;
-    case 'none':
+    case 'none': // e.g., 1000.00
       return `${currencySymbol}${num.toFixed(2)}`;
-    case 'comma':
+    case 'comma': // e.g., 1,000.00
     default:
       return `${currencySymbol}${new Intl.NumberFormat('en-US', options).format(num)}`;
   }
@@ -51,15 +51,24 @@ const Dashboard = ({ user, onLogout }) => {
   const [newExpenseAmount, setNewExpenseAmount] = useState('');
   const [newExpenseNotes, setNewExpenseNotes] = useState('');
   const [currency, setCurrency] = useState('$');
-  const [appTitle, setAppTitle] = useState('');
-  const [appIcon, setAppIcon] = useState('');
+  const [appTitle, setAppTitle] = useState("Guest's Budget");
+  const [appIcon, setAppIcon] = useState(DEFAULT_ICON_URL);
   const [numberFormat, setNumberFormat] = useState('comma');
+
+  // Flag to detect if the user is in guest mode
+  const isGuest = user.isGuest === true;
 
   const totalExpenses = expenses.reduce((sum, expense) => sum + expense.amount, 0);
   const remainingBudget = budget - totalExpenses;
   const progress = budget > 0 ? (totalExpenses / budget) * 100 : 0;
   
   useEffect(() => {
+    // Prevent Firestore calls for guests
+    if (isGuest) {
+      setExpenses([]); // Ensure expenses are empty for a new guest session
+      return;
+    }
+    
     const userDocRef = doc(db, 'users', user.uid);
     const fetchData = async () => {
       const docSnap = await getDoc(userDocRef);
@@ -79,23 +88,22 @@ const Dashboard = ({ user, onLogout }) => {
       }
     };
     fetchData();
-  }, [user.uid, user.displayName, user.photoURL]);
+  }, [user, isGuest]);
 
   useEffect(() => {
-    if (!user.uid) return;
+    // Prevent Firestore listener for guests
+    if (isGuest || !user.uid) return;
+
     const expensesColRef = collection(db, 'users', user.uid, 'expenses');
     const q = query(expensesColRef, orderBy('createdAt', 'desc'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       setExpenses(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     });
     return () => unsubscribe();
-  }, [user.uid]);
+  }, [user.uid, isGuest]);
 
   const handleDownloadPdf = () => {
-    if (expenses.length === 0) {
-      toast.error("No expenses to export.");
-      return;
-    }
+    if (expenses.length === 0) return toast.error("No expenses to export.");
     const doc = new jsPDF();
     doc.setFontSize(18);
     doc.text("Expense Report", 14, 22);
@@ -132,14 +140,14 @@ const Dashboard = ({ user, onLogout }) => {
 
   const handleDeleteAllExpenses = async () => {
     setShowConfirmDeleteAllModal(false);
-    if (expenses.length === 0) {
-      return toast.error("There are no expenses to delete.");
-    }
+    if (isGuest || expenses.length === 0) return toast.error("There are no expenses to delete.");
+    
     const deletionPromise = Promise.all(
       expenses.map(expense => 
         deleteDoc(doc(db, 'users', user.uid, 'expenses', expense.id))
       )
     );
+
     toast.promise(deletionPromise, {
       loading: 'Deleting all expenses...',
       success: 'All expenses deleted successfully!',
@@ -148,7 +156,9 @@ const Dashboard = ({ user, onLogout }) => {
   };
 
   const handleSaveSettings = async (settings) => {
+    if (isGuest) return toast.error("Please sign up to save settings.");
     if (!settings.budget || settings.budget <= 0) return toast.error("Please enter a valid budget.");
+    
     const userDocRef = doc(db, 'users', user.uid);
     try {
       await setDoc(userDocRef, settings, { merge: true });
@@ -167,21 +177,33 @@ const Dashboard = ({ user, onLogout }) => {
     const amount = Number(newExpenseAmount);
     if (!newExpenseDesc || isNaN(amount) || amount <= 0) return toast.error("Please enter a valid description and amount.");
     
-    const expensesColRef = collection(db, 'users', user.uid, 'expenses');
-    await addDoc(expensesColRef, {
-      description: newExpenseDesc,
-      amount: amount,
-      createdAt: new Date(),
-      notes: newExpenseNotes,
-    });
-    
+    if (isGuest) {
+        const guestExpense = {
+            id: `guest-${Date.now()}`,
+            description: newExpenseDesc,
+            amount: amount,
+            notes: newExpenseNotes,
+            createdAt: { toDate: () => new Date() } 
+        };
+        setExpenses(prev => [guestExpense, ...prev]);
+        toast.success("Expense added for this session.");
+    } else {
+        const expensesColRef = collection(db, 'users', user.uid, 'expenses');
+        await addDoc(expensesColRef, {
+          description: newExpenseDesc,
+          amount: amount,
+          createdAt: new Date(),
+          notes: newExpenseNotes,
+        });
+        toast.success("Expense added and saved!");
+    }
     setNewExpenseDesc('');
     setNewExpenseAmount('');
     setNewExpenseNotes('');
-    toast.success("Expense added!");
   };
 
   const handleUpdateExpense = async (updatedExpense) => {
+    if (isGuest) return;
     const expenseDocRef = doc(db, 'users', user.uid, 'expenses', updatedExpense.id);
     try {
       await updateDoc(expenseDocRef, {
@@ -195,6 +217,12 @@ const Dashboard = ({ user, onLogout }) => {
   };
 
   const handleDeleteExpense = async (expenseId) => {
+    if (isGuest) {
+        setExpenses(expenses.filter(expense => expense.id !== expenseId));
+        toast.success("Expense removed for this session.");
+        return;
+    }
+
     const expenseDocRef = doc(db, 'users', user.uid, 'expenses', expenseId);
     try {
       const docSnap = await getDoc(expenseDocRef);
@@ -213,7 +241,7 @@ const Dashboard = ({ user, onLogout }) => {
   };
 
   const handleUndoDelete = async (idToRestore, dataToRestore) => {
-    if (!idToRestore || !dataToRestore) return;
+    if (isGuest) return;
     const expenseDocRef = doc(db, 'users', user.uid, 'expenses', idToRestore);
     try {
       await setDoc(expenseDocRef, dataToRestore);
@@ -229,26 +257,9 @@ const Dashboard = ({ user, onLogout }) => {
 
   return (
     <>
-      <SetupModal 
-        isOpen={showSetupModal}
-        onSave={handleSaveSettings}
-        onClose={() => setShowSetupModal(false)}
-        user={user}
-        initialSettings={{ appTitle, appIcon, budget, currency, numberFormat, isNewUser }}
-      />
-      <EditExpenseModal
-        isOpen={!!editingExpense}
-        onClose={() => setEditingExpense(null)}
-        onSave={handleUpdateExpense}
-        expense={editingExpense}
-      />
-      <ConfirmationModal
-        isOpen={showConfirmDeleteAllModal}
-        onClose={() => setShowConfirmDeleteAllModal(false)}
-        onConfirm={handleDeleteAllExpenses}
-        title="Delete All Expenses?"
-        message="Are you sure you want to permanently delete all of your expenses? This action cannot be undone."
-      />
+      <SetupModal isOpen={showSetupModal} onSave={handleSaveSettings} onClose={() => setShowSetupModal(false)} user={user} initialSettings={{ appTitle, appIcon, budget, currency, numberFormat, isNewUser }} />
+      <EditExpenseModal isOpen={!!editingExpense} onClose={() => setEditingExpense(null)} onSave={handleUpdateExpense} expense={editingExpense} />
+      <ConfirmationModal isOpen={showConfirmDeleteAllModal} onClose={() => setShowConfirmDeleteAllModal(false)} onConfirm={handleDeleteAllExpenses} title="Delete All Expenses?" message="Are you sure you want to permanently delete all of your expenses? This action cannot be undone." />
 
       <div className="max-w-5xl mx-auto p-4 md:p-8">
         <div className="flex justify-between items-center gap-4 mb-8">
@@ -259,12 +270,12 @@ const Dashboard = ({ user, onLogout }) => {
             </h1>
           </div>
           <div className="flex items-center gap-4 flex-shrink-0">
-            <button onClick={() => setShowSetupModal(true)} className="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors" title="Settings">
+            <button onClick={() => setShowSetupModal(true)} className="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" title="Settings" disabled={isGuest}>
               <SettingsIcon />
             </button>
             <ThemeToggle />
-            <button onClick={onLogout} className="px-4 py-2 bg-red-500 text-white font-semibold rounded-lg shadow-md hover:bg-red-600 transition-all">
-              Logout
+            <button onClick={onLogout} className={`px-4 py-2 text-white font-semibold rounded-lg shadow-md transition-all ${isGuest ? 'bg-blue-500 hover:bg-blue-600' : 'bg-red-500 hover:bg-red-600'}`}>
+              {isGuest ? "Login / Sign Up" : "Logout"}
             </button>
           </div>
         </div>
@@ -286,6 +297,13 @@ const Dashboard = ({ user, onLogout }) => {
           <div className="grid md:grid-cols-2 gap-8">
             <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md">
               <h3 className="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-100">Add New Expense</h3>
+              {isGuest && (
+                <div className="text-center p-4 bg-yellow-100 dark:bg-yellow-900/50 rounded-lg mb-4">
+                  <p className="text-sm font-medium text-yellow-800 dark:text-yellow-200">
+                    You are in Guest Mode. Progress will not be saved.
+                  </p>
+                </div>
+              )}
               <form onSubmit={handleAddExpense} className="flex flex-col gap-4">
                 <input value={newExpenseDesc} onChange={(e) => setNewExpenseDesc(e.target.value)} placeholder="Description" className="p-3 bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
                 <input type="number" value={newExpenseAmount} onChange={(e) => setNewExpenseAmount(e.target.value)} placeholder="Amount" className="p-3 bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
@@ -303,18 +321,10 @@ const Dashboard = ({ user, onLogout }) => {
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-100">Your Expenses</h3>
                 <div className="flex items-center gap-2">
-                  <button 
-                    onClick={handleDownloadPdf}
-                    className="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
-                    title="Download as PDF"
-                  >
+                  <button onClick={handleDownloadPdf} className="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors" title="Download as PDF">
                     <DownloadIcon />
                   </button>
-                  <button
-                    onClick={() => setShowConfirmDeleteAllModal(true)}
-                    className="p-2 rounded-full text-red-500 hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors"
-                    title="Delete All Expenses"
-                  >
+                  <button onClick={() => setShowConfirmDeleteAllModal(true)} className="p-2 rounded-full text-red-500 hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" title="Delete All Expenses" disabled={isGuest}>
                     <DeleteAllIcon />
                   </button>
                 </div>
@@ -330,20 +340,12 @@ const Dashboard = ({ user, onLogout }) => {
                     </div>
                     <div className="flex items-center gap-2 ml-4 shrink-0">
                       <span className="font-bold text-gray-800 dark:text-gray-100">{formatMoney(expense.amount, currency, numberFormat)}</span>
-                      <button 
-                        onClick={() => setEditingExpense(expense)} 
-                        className="text-blue-500 hover:text-blue-700 p-1 rounded-full hover:bg-blue-100 dark:hover:bg-blue-900/50"
-                        title="Edit Expense"
-                      >
-                        <EditIcon />
-                      </button>
-                      <button 
-                        onClick={() => handleDeleteExpense(expense.id)} 
-                        className="text-red-500 hover:text-red-700 p-1 rounded-full hover:bg-red-100 dark:hover:bg-red-900/50"
-                        title="Delete Expense"
-                      >
-                        <DeleteIcon />
-                      </button>
+                      {!isGuest && (
+                        <>
+                          <button onClick={() => setEditingExpense(expense)} className="text-blue-500 hover:text-blue-700 p-1 rounded-full hover:bg-blue-100 dark:hover:bg-blue-900/50" title="Edit Expense"><EditIcon /></button>
+                          <button onClick={() => handleDeleteExpense(expense.id)} className="text-red-500 hover:text-red-700 p-1 rounded-full hover:bg-red-100 dark:hover:bg-red-900/50" title="Delete Expense"><DeleteIcon /></button>
+                        </>
+                      )}
                     </div>
                   </li>
                 ))}

@@ -21,7 +21,7 @@ const EyeSlashedIcon = () => (
   </svg>
 );
 
-const Login = () => {
+const Login = ({ onGuestLogin }) => {
   const [isLoginView, setIsLoginView] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -179,9 +179,9 @@ const Login = () => {
           </p>
         </div>
 
-        <div className="my-6 flex items-center">
+        <div className="my-4 flex items-center">
           <div className="flex-grow border-t border-gray-300 dark:border-gray-600"></div>
-          <span className="mx-4 text-sm text-gray-500 dark:text-gray-400">OR</span>
+          <span className="mx-4 text-xs text-gray-500 dark:text-gray-400">OR</span>
           <div className="flex-grow border-t border-gray-300 dark:border-gray-600"></div>
         </div>
 
@@ -195,6 +195,16 @@ const Login = () => {
           </svg>
           {isProcessing ? 'Opening...' : 'Sign in with Google'}
         </button>
+
+        <div className="mt-6 text-center">
+            <button 
+              onClick={onGuestLogin}
+              className="text-sm font-semibold text-gray-600 dark:text-gray-400 hover:underline disabled:opacity-50"
+              disabled={isProcessing}
+            >
+              Try without logging in
+            </button>
+        </div>
       </div>
     </div>
   );
