@@ -6,7 +6,7 @@
     .text { 
       fill: #ffffff; /* White text */
       font-family: Arial, sans-serif;
-      font-size: 48px;
+      font-size: 64px;
       font-weight: bold;
       text-anchor: middle;
     }
@@ -22,5 +22,5 @@
   <rect class="bg" width="100" height="100" rx="16" />
 
   <!-- The logo's text, split into two lines -->
-  <text class="text" x="50" y="70">BL</text>
+  <text class="text" x="50" y="70">$</text>
 </svg>

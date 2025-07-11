@@ -2,16 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { db } from '../firebase';
 import { doc, getDoc, setDoc, collection, addDoc, onSnapshot, deleteDoc, query, orderBy, updateDoc } from "firebase/firestore";
 import { toast } from 'react-hot-toast';
-
-// PDF Generation Libraries
 import jsPDF from 'jspdf';
-// CORRECTED IMPORT: Import autoTable directly to avoid production build issues.
-import autoTable from 'jspdf-autotable'; 
+import autoTable from 'jspdf-autotable';
 
 // Component Imports
 import ThemeToggle from './ThemeToggle';
 import SetupModal from './SetupModal';
 import EditExpenseModal from './EditExpenseModal';
+import ConfirmationModal from './ConfirmationModal';
 
 const DEFAULT_ICON_URL = '/default-icon.jpg';
 
@@ -20,6 +18,7 @@ const SettingsIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" className="
 const EditIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.5L15.232 5.232z" /></svg> );
 const DeleteIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-4v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg> );
 const DownloadIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg> );
+const DeleteAllIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-4v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg> );
 
 // --- Helper Functions ---
 const formatMoney = (amount, currencySymbol, numberFormat) => {
@@ -29,11 +28,11 @@ const formatMoney = (amount, currencySymbol, numberFormat) => {
   const options = { minimumFractionDigits: 2, maximumFractionDigits: 2 };
 
   switch (numberFormat) {
-    case 'dot': // e.g., 1.000,00
+    case 'dot':
       return `${currencySymbol}${new Intl.NumberFormat('de-DE', options).format(num)}`;
-    case 'none': // e.g., 1000.00
+    case 'none':
       return `${currencySymbol}${num.toFixed(2)}`;
-    case 'comma': // e.g., 1,000.00
+    case 'comma':
     default:
       return `${currencySymbol}${new Intl.NumberFormat('en-US', options).format(num)}`;
   }
@@ -44,6 +43,7 @@ const Dashboard = ({ user, onLogout }) => {
   const [showSetupModal, setShowSetupModal] = useState(false);
   const [isNewUser, setIsNewUser] = useState(false);
   const [editingExpense, setEditingExpense] = useState(null);
+  const [showConfirmDeleteAllModal, setShowConfirmDeleteAllModal] = useState(false);
   
   const [budget, setBudget] = useState(1000);
   const [expenses, setExpenses] = useState([]);
@@ -96,7 +96,6 @@ const Dashboard = ({ user, onLogout }) => {
       toast.error("No expenses to export.");
       return;
     }
-
     const doc = new jsPDF();
     doc.setFontSize(18);
     doc.text("Expense Report", 14, 22);
@@ -106,19 +105,13 @@ const Dashboard = ({ user, onLogout }) => {
     doc.text(`Date: ${new Date().toLocaleDateString()}`, 14, 36);
 
     const tableColumn = ["Date", "Description", "Notes", "Amount"];
-    const tableRows = [];
+    const tableRows = expenses.map(expense => [
+      expense.createdAt.toDate().toLocaleDateString(),
+      expense.description,
+      expense.notes || "-",
+      formatMoney(expense.amount, currency, numberFormat)
+    ]);
 
-    expenses.forEach(expense => {
-      const expenseData = [
-        expense.createdAt.toDate().toLocaleDateString(),
-        expense.description,
-        expense.notes || "-",
-        formatMoney(expense.amount, currency, numberFormat)
-      ];
-      tableRows.push(expenseData);
-    });
-
-    // CORRECTED PDF CALL: Use autoTable(doc, ...)
     autoTable(doc, {
       head: [tableColumn],
       body: tableRows,
@@ -128,15 +121,30 @@ const Dashboard = ({ user, onLogout }) => {
       columnStyles: { 3: { halign: 'right' } }
     });
 
-    // CORRECTED Y-POSITION: Use doc.lastAutoTable.finalY
     const finalY = doc.lastAutoTable.finalY;
-
     doc.setFontSize(12);
     doc.text(`Total Expenses: ${formatMoney(totalExpenses, currency, numberFormat)}`, 14, finalY + 10);
     doc.text(`Remaining Budget: ${formatMoney(remainingBudget, currency, numberFormat)}`, 14, finalY + 17);
 
     doc.save(`expense-report-${new Date().toISOString().slice(0, 10)}.pdf`);
     toast.success("Report downloaded!");
+  };
+
+  const handleDeleteAllExpenses = async () => {
+    setShowConfirmDeleteAllModal(false);
+    if (expenses.length === 0) {
+      return toast.error("There are no expenses to delete.");
+    }
+    const deletionPromise = Promise.all(
+      expenses.map(expense => 
+        deleteDoc(doc(db, 'users', user.uid, 'expenses', expense.id))
+      )
+    );
+    toast.promise(deletionPromise, {
+      loading: 'Deleting all expenses...',
+      success: 'All expenses deleted successfully!',
+      error: 'Failed to delete all expenses.',
+    });
   };
 
   const handleSaveSettings = async (settings) => {
@@ -183,10 +191,7 @@ const Dashboard = ({ user, onLogout }) => {
       });
       toast.success("Expense updated!");
       setEditingExpense(null);
-    } catch (error) {
-      toast.error("Failed to update expense.");
-      console.error("Error updating document: ", error);
-    }
+    } catch (error) { toast.error("Failed to update expense."); }
   };
 
   const handleDeleteExpense = async (expenseId) => {
@@ -204,7 +209,7 @@ const Dashboard = ({ user, onLogout }) => {
           </button>
         </span>
       ), { duration: 6000 });
-    } catch (error) { toast.error("Failed to delete expense."); console.error(error); }
+    } catch (error) { toast.error("Failed to delete expense."); }
   };
 
   const handleUndoDelete = async (idToRestore, dataToRestore) => {
@@ -213,7 +218,7 @@ const Dashboard = ({ user, onLogout }) => {
     try {
       await setDoc(expenseDocRef, dataToRestore);
       toast.success("Expense restored!");
-    } catch (error) { toast.error("Failed to restore expense."); console.error(error); }
+    } catch (error) { toast.error("Failed to restore expense."); }
   };
 
   const getProgressBarColor = () => {
@@ -237,6 +242,14 @@ const Dashboard = ({ user, onLogout }) => {
         onSave={handleUpdateExpense}
         expense={editingExpense}
       />
+      <ConfirmationModal
+        isOpen={showConfirmDeleteAllModal}
+        onClose={() => setShowConfirmDeleteAllModal(false)}
+        onConfirm={handleDeleteAllExpenses}
+        title="Delete All Expenses?"
+        message="Are you sure you want to permanently delete all of your expenses? This action cannot be undone."
+      />
+
       <div className="max-w-5xl mx-auto p-4 md:p-8">
         <div className="flex justify-between items-center gap-4 mb-8">
           <div className="flex items-center gap-3 min-w-0">
@@ -289,13 +302,22 @@ const Dashboard = ({ user, onLogout }) => {
             <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-100">Your Expenses</h3>
-                <button 
-                  onClick={handleDownloadPdf}
-                  className="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
-                  title="Download as PDF"
-                >
-                  <DownloadIcon />
-                </button>
+                <div className="flex items-center gap-2">
+                  <button 
+                    onClick={handleDownloadPdf}
+                    className="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                    title="Download as PDF"
+                  >
+                    <DownloadIcon />
+                  </button>
+                  <button
+                    onClick={() => setShowConfirmDeleteAllModal(true)}
+                    className="p-2 rounded-full text-red-500 hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors"
+                    title="Delete All Expenses"
+                  >
+                    <DeleteAllIcon />
+                  </button>
+                </div>
               </div>
               <ul className="space-y-3 h-[400px] overflow-y-auto pr-2">
                 {expenses.length === 0 && <p className="text-gray-500 dark:text-gray-400">No expenses added yet.</p>}
