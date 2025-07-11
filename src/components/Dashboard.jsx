@@ -20,7 +20,7 @@ const DeleteIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" className="h-
 const DownloadIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg> );
 const DeleteAllIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-4v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg> );
 
-// --- Helper Functions ---
+// Helper function for formatting money based on user's preference
 const formatMoney = (amount, currencySymbol, numberFormat) => {
   const num = Number(amount);
   if (isNaN(num)) return `${currencySymbol || '$'}0.00`;
@@ -50,12 +50,13 @@ const Dashboard = ({ user, onLogout }) => {
   const [newExpenseDesc, setNewExpenseDesc] = useState('');
   const [newExpenseAmount, setNewExpenseAmount] = useState('');
   const [newExpenseNotes, setNewExpenseNotes] = useState('');
+  const [addBudgetAmount, setAddBudgetAmount] = useState('');
+  
   const [currency, setCurrency] = useState('$');
   const [appTitle, setAppTitle] = useState("Guest's Budget");
   const [appIcon, setAppIcon] = useState(DEFAULT_ICON_URL);
   const [numberFormat, setNumberFormat] = useState('comma');
 
-  // Flag to detect if the user is in guest mode
   const isGuest = user.isGuest === true;
 
   const totalExpenses = expenses.reduce((sum, expense) => sum + expense.amount, 0);
@@ -63,9 +64,8 @@ const Dashboard = ({ user, onLogout }) => {
   const progress = budget > 0 ? (totalExpenses / budget) * 100 : 0;
   
   useEffect(() => {
-    // Prevent Firestore calls for guests
     if (isGuest) {
-        setExpenses([]); // Ensure expenses are empty for a new guest session
+        setExpenses([]);
         return;
     }
     
@@ -91,7 +91,6 @@ const Dashboard = ({ user, onLogout }) => {
   }, [user, isGuest]);
 
   useEffect(() => {
-    // Prevent Firestore listener for guests
     if (isGuest || !user.uid) return;
 
     const expensesColRef = collection(db, 'users', user.uid, 'expenses');
@@ -101,6 +100,33 @@ const Dashboard = ({ user, onLogout }) => {
     });
     return () => unsubscribe();
   }, [user.uid, isGuest]);
+
+  const handleAddToBudget = async (e) => {
+    e.preventDefault();
+    const amountToAdd = Number(addBudgetAmount);
+
+    if (isNaN(amountToAdd) || amountToAdd <= 0) {
+      return toast.error("Please enter a valid positive amount to add.");
+    }
+
+    const newTotalBudget = budget + amountToAdd;
+
+    if (isGuest) {
+      setBudget(newTotalBudget);
+      toast.success(`${formatMoney(amountToAdd, currency, numberFormat)} added to budget!`);
+    } else {
+      const userDocRef = doc(db, 'users', user.uid);
+      try {
+        await updateDoc(userDocRef, { budget: newTotalBudget });
+        // Firestore listener will update state, but toast provides immediate feedback
+        toast.success(`${formatMoney(amountToAdd, currency, numberFormat)} added and saved!`);
+      } catch (error) {
+        toast.error("Failed to update budget.");
+        console.error("Error updating budget: ", error);
+      }
+    }
+    setAddBudgetAmount('');
+  };
 
   const handleDownloadPdf = () => {
     if (expenses.length === 0) return toast.error("No expenses to export.");
@@ -305,6 +331,22 @@ const Dashboard = ({ user, onLogout }) => {
             <p className="text-right font-medium text-gray-600 dark:text-gray-400">
               {formatMoney(remainingBudget, currency, numberFormat)} Remaining
             </p>
+
+            <div className="mt-4 border-t border-gray-200 dark:border-gray-700 pt-4">
+              <form onSubmit={handleAddToBudget} className="flex items-center gap-3">
+                <input
+                  type="number"
+                  value={addBudgetAmount}
+                  onChange={(e) => setAddBudgetAmount(e.target.value)}
+                  placeholder="Amount to add to budget"
+                  min="0"
+                  className="w-full flex-grow p-2 bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <button type="submit" className="px-4 py-2 bg-blue-500 text-white font-semibold rounded-lg shadow-sm hover:bg-blue-600 transition-all flex-shrink-0">
+                  Add
+                </button>
+              </form>
+            </div>
           </div>
           <div className="grid md:grid-cols-2 gap-8">
             <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md">
