@@ -1,26 +1,40 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../firebase';
-// Import updateDoc from firestore
 import { doc, getDoc, setDoc, collection, addDoc, onSnapshot, deleteDoc, query, orderBy, updateDoc } from "firebase/firestore";
 import { toast } from 'react-hot-toast';
 import ThemeToggle from './ThemeToggle';
 import SetupModal from './SetupModal';
-import EditExpenseModal from './EditExpenseModal'; // --- IMPORT NEW MODAL ---
+import EditExpenseModal from './EditExpenseModal';
 
-const DEFAULT_ICON_URL = '/default-icon.jpg'; 
+const DEFAULT_ICON_URL = '/default-icon.jpg';
 
 const SettingsIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg> );
-// --- NEW ICONS FOR BUTTONS ---
 const EditIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.5L15.232 5.232z" /></svg> );
 const DeleteIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-4v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg> );
+
+// Helper function for formatting money based on user's preference
+const formatMoney = (amount, currencySymbol, numberFormat) => {
+  const num = Number(amount);
+  if (isNaN(num)) return `${currencySymbol}0.00`;
+
+  const options = { minimumFractionDigits: 2, maximumFractionDigits: 2 };
+
+  switch (numberFormat) {
+    case 'dot': // e.g., 1.000,00
+      return `${currencySymbol}${new Intl.NumberFormat('de-DE', options).format(num)}`;
+    case 'none': // e.g., 1000.00
+      return `${currencySymbol}${num.toFixed(2)}`;
+    case 'comma': // e.g., 1,000.00
+    default:
+      return `${currencySymbol}${new Intl.NumberFormat('en-US', options).format(num)}`;
+  }
+};
 
 const Dashboard = ({ user, onLogout }) => {
   const [showSetupModal, setShowSetupModal] = useState(false);
   const [isNewUser, setIsNewUser] = useState(false);
-  
-  // --- NEW STATE TO MANAGE EDITING ---
   const [editingExpense, setEditingExpense] = useState(null);
-
+  
   const [budget, setBudget] = useState(1000);
   const [expenses, setExpenses] = useState([]);
   const [newExpenseDesc, setNewExpenseDesc] = useState('');
@@ -29,12 +43,12 @@ const Dashboard = ({ user, onLogout }) => {
   const [currency, setCurrency] = useState('$');
   const [appTitle, setAppTitle] = useState('');
   const [appIcon, setAppIcon] = useState('');
+  const [numberFormat, setNumberFormat] = useState('comma'); // State for number format
 
   const totalExpenses = expenses.reduce((sum, expense) => sum + expense.amount, 0);
   const remainingBudget = budget - totalExpenses;
   const progress = budget > 0 ? (totalExpenses / budget) * 100 : 0;
   
-  // ... (useEffect for user data and expenses remains the same) ...
   useEffect(() => {
     const userDocRef = doc(db, 'users', user.uid);
     const fetchData = async () => {
@@ -46,6 +60,7 @@ const Dashboard = ({ user, onLogout }) => {
         setCurrency(userData.currency || '$');
         setAppTitle(userData.appTitle || `${user.displayName}'s Budget`);
         setAppIcon(userData.appIcon || user.photoURL || DEFAULT_ICON_URL);
+        setNumberFormat(userData.numberFormat || 'comma'); // Load user's format preference
       } else {
         setIsNewUser(true);
         setShowSetupModal(true);
@@ -67,7 +82,6 @@ const Dashboard = ({ user, onLogout }) => {
   }, [user.uid]);
 
   const handleSaveSettings = async (settings) => {
-    // ... (this function remains the same) ...
     if (!settings.budget || settings.budget <= 0) return toast.error("Please enter a valid budget.");
     const userDocRef = doc(db, 'users', user.uid);
     try {
@@ -76,13 +90,13 @@ const Dashboard = ({ user, onLogout }) => {
       setCurrency(settings.currency);
       setAppTitle(settings.appTitle);
       setAppIcon(settings.appIcon);
+      setNumberFormat(settings.numberFormat); // Update format state
       setShowSetupModal(false);
       toast.success("Settings saved!");
     } catch (error) { toast.error("Failed to save settings."); console.error(error); }
   };
   
   const handleAddExpense = async (e) => {
-    // ... (this function remains the same) ...
     e.preventDefault();
     const amount = Number(newExpenseAmount);
     if (!newExpenseDesc || isNaN(amount) || amount <= 0) return toast.error("Please enter a valid description and amount.");
@@ -102,18 +116,16 @@ const Dashboard = ({ user, onLogout }) => {
     toast.success("Expense added!");
   };
 
-  // --- NEW FUNCTION TO HANDLE UPDATING AN EXPENSE ---
   const handleUpdateExpense = async (updatedExpense) => {
     const expenseDocRef = doc(db, 'users', user.uid, 'expenses', updatedExpense.id);
     try {
-      // We only update the fields that can be changed
       await updateDoc(expenseDocRef, {
         description: updatedExpense.description,
         amount: updatedExpense.amount,
         notes: updatedExpense.notes,
       });
       toast.success("Expense updated!");
-      setEditingExpense(null); // Close the modal on success
+      setEditingExpense(null);
     } catch (error) {
       toast.error("Failed to update expense.");
       console.error("Error updating document: ", error);
@@ -121,7 +133,6 @@ const Dashboard = ({ user, onLogout }) => {
   };
 
   const handleDeleteExpense = async (expenseId) => {
-    // ... (this function remains the same) ...
     const expenseDocRef = doc(db, 'users', user.uid, 'expenses', expenseId);
     try {
       const docSnap = await getDoc(expenseDocRef);
@@ -140,7 +151,6 @@ const Dashboard = ({ user, onLogout }) => {
   };
 
   const handleUndoDelete = async (idToRestore, dataToRestore) => {
-    // ... (this function remains the same) ...
     if (!idToRestore || !dataToRestore) return;
     const expenseDocRef = doc(db, 'users', user.uid, 'expenses', idToRestore);
     try {
@@ -162,20 +172,16 @@ const Dashboard = ({ user, onLogout }) => {
         onSave={handleSaveSettings}
         onClose={() => setShowSetupModal(false)}
         user={user}
-        initialSettings={{ appTitle, appIcon, budget, currency, isNewUser }}
+        initialSettings={{ appTitle, appIcon, budget, currency, numberFormat, isNewUser }}
       />
-
-      {/* --- RENDER THE EDIT MODAL --- */}
       <EditExpenseModal
         isOpen={!!editingExpense}
         onClose={() => setEditingExpense(null)}
         onSave={handleUpdateExpense}
         expense={editingExpense}
       />
-      
       <div className="max-w-5xl mx-auto p-4 md:p-8">
-        {/* Header remains the same */}
-        <header className="flex justify-between items-center mb-8">
+        <div className="flex justify-between items-center mb-8">
           <div className="flex items-center gap-3">
             <img src={appIcon} alt="App Icon" className="w-16 h-16 object-cover" />
             <h1 className="text-xl md:text-2xl font-bold text-gray-800 dark:text-gray-100">{appTitle}</h1>
@@ -189,25 +195,23 @@ const Dashboard = ({ user, onLogout }) => {
               Logout
             </button>
           </div>
-        </header>
+        </div>
         <main>
-          {/* Progress bar section remains the same */}
           <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md mb-8">
             <div className="flex justify-between items-center mb-2">
               <div className="text-2xl font-bold text-gray-800 dark:text-gray-100">
-                {currency}{totalExpenses.toFixed(2)}
-                <span className="text-gray-400 dark:text-gray-500 text-lg"> / {currency}{budget.toFixed(2)}</span>
+                {formatMoney(totalExpenses, currency, numberFormat)}
+                <span className="text-gray-400 dark:text-gray-500 text-lg"> / {formatMoney(budget, currency, numberFormat)}</span>
               </div>
             </div>
             <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-4 mb-2">
               <div className={`h-4 rounded-full transition-all duration-500 ${getProgressBarColor()}`} style={{ width: `${Math.min(progress, 100)}%` }}></div>
             </div>
             <p className="text-right font-medium text-gray-600 dark:text-gray-400">
-              {currency}{remainingBudget.toFixed(2)} Remaining
+              {formatMoney(remainingBudget, currency, numberFormat)} Remaining
             </p>
           </div>
           <div className="grid md:grid-cols-2 gap-8">
-            {/* Add expense form remains the same */}
             <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md">
               <h3 className="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-100">Add New Expense</h3>
               <form onSubmit={handleAddExpense} className="flex flex-col gap-4">
@@ -235,8 +239,7 @@ const Dashboard = ({ user, onLogout }) => {
                       {expense.createdAt && ( <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{expense.createdAt.toDate().toLocaleString()}</p> )}
                     </div>
                     <div className="flex items-center gap-2 ml-4 shrink-0">
-                      <span className="font-bold text-gray-800 dark:text-gray-100">{currency}{expense.amount.toFixed(2)}</span>
-                      {/* --- MODIFICATION: ADD EDIT BUTTON --- */}
+                      <span className="font-bold text-gray-800 dark:text-gray-100">{formatMoney(expense.amount, currency, numberFormat)}</span>
                       <button 
                         onClick={() => setEditingExpense(expense)} 
                         className="text-blue-500 hover:text-blue-700 p-1 rounded-full hover:bg-blue-100 dark:hover:bg-blue-900/50"
