@@ -4,7 +4,7 @@ import {
   createUserWithEmailAndPassword, 
   signInWithEmailAndPassword, 
   signInWithPopup,
-  signInAnonymously // <-- Import anonymous sign-in
+  signInAnonymously
 } from 'firebase/auth';
 import PasswordStrengthIndicator from './PasswordStrengthIndicator';
 
@@ -22,7 +22,7 @@ const EyeSlashedIcon = () => (
   </svg>
 );
 
-// --- NEW: SVG Icon for Guest Mode ---
+// --- SVG Icon for Guest Mode ---
 const GuestIcon = () => (
     <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
@@ -36,10 +36,9 @@ const Login = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
-  const [processingAction, setProcessingAction] = useState(''); // To show specific processing text
+  const [processingAction, setProcessingAction] = useState('');
   const [showPassword, setShowPassword] = useState(false);
 
-  // --- NEW: Handler for Guest Login ---
   const handleGuestLogin = async () => {
     if (isProcessing) return;
     setProcessingAction('guest');
@@ -48,7 +47,6 @@ const Login = () => {
 
     try {
       await signInAnonymously(auth);
-      // Upon success, the onAuthStateChanged listener in App.jsx will handle the redirect.
     } catch (err) {
       console.error("Guest login error:", err);
       setError('Failed to start guest session. Please try again.');
@@ -123,13 +121,13 @@ const Login = () => {
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-slate-100 dark:bg-gray-900 p-4">
+      
+      {/* --- MOVED AND STYLED: BRANDING HEADER --- */}
+      <h2 className="text-3xl font-bold text-center text-white tracking-widest mb-6">
+        BUDGET.LIMIT
+      </h2>
+      
       <div className="w-full max-w-md bg-white dark:bg-gray-800 p-8 rounded-xl shadow-2xl">
-        
-        {/* --- ADDED: BRANDING HEADER --- */}
-        <h2 className="text-2xl font-bold text-center text-gray-400 dark:text-gray-500 tracking-widest mb-8">
-          BUDGET.LIMIT
-        </h2>
-
         <h1 className="text-3xl font-bold mb-2 text-center text-gray-800 dark:text-gray-100">
           {isLoginView ? 'Welcome Back!' : 'Create an Account'}
         </h1>
@@ -223,7 +221,6 @@ const Login = () => {
           <div className="flex-grow border-t border-gray-300 dark:border-gray-600"></div>
         </div>
         
-        {/* --- MODIFIED: Container for social and guest logins --- */}
         <div className="space-y-3">
             <button 
             onClick={handleGoogleLogin} 
@@ -236,7 +233,6 @@ const Login = () => {
                 {isProcessing && processingAction === 'google' ? 'Opening...' : 'Sign in with Google'}
             </button>
             
-            {/* --- NEW: Guest Mode Button --- */}
             <button 
             onClick={handleGuestLogin} 
             className="w-full flex items-center justify-center gap-3 px-6 py-3 border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-200 font-semibold rounded-lg shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
