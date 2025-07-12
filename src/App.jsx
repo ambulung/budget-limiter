@@ -3,6 +3,7 @@ import { onAuthStateChanged, signOut } from "firebase/auth";
 import { auth } from './firebase';
 import { Toaster, toast } from 'react-hot-toast';
 
+// Component Imports
 import Header from './components/Header';
 import Dashboard from './components/Dashboard';
 import Login from './components/Login';
@@ -11,40 +12,33 @@ import Footer from './components/Footer';
 function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  
+  // STATE LIFTING: The state for the settings modal now lives in the top-level App component.
+  // This allows the Header button to control the modal inside the Dashboard.
+  const [showSetupModal, setShowSetupModal] = useState(false);
 
+  // Effect to check for authentication state changes on component mount
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      // Don't set user if it's null (logout) and we are already in guest mode
-      if (currentUser || !user?.isGuest) {
-        setUser(currentUser);
-      }
+      setUser(currentUser);
       setLoading(false);
     });
+    // Cleanup subscription on unmount
     return () => unsubscribe();
   }, []);
 
-  const handleGuestLogin = () => {
-    const guestUser = {
-      uid: 'guest',
-      displayName: 'Guest',
-      isGuest: true,
-    };
-    setUser(guestUser);
-    toast.success("You are now in Guest Mode!");
-  };
-
+  // Logout handler function to be passed down
   const handleLogout = async () => {
     try {
-      if (user && !user.isGuest) {
-        await signOut(auth);
-      }
-      setUser(null); // This handles both guest and real user logout
+      await signOut(auth);
+      // No success toast needed as the app will redirect to the login page
     } catch (error) {
       console.error("Logout error:", error);
       toast.error("Failed to log out.");
     }
   };
 
+  // Display a loading screen while Firebase is checking auth state
   if (loading) {
     return (
       <div className="flex justify-center items-center h-screen bg-slate-100 dark:bg-gray-900">
@@ -54,18 +48,33 @@ function App() {
   }
 
   return (
+    // This flex layout ensures the footer sticks to the bottom of the screen
     <div className="min-h-screen bg-slate-100 dark:bg-gray-900 flex flex-col">
       <Toaster position="top-center" reverseOrder={false} />
-      <Header />
       
+      {/* The Header now receives props to control logout and settings */}
+      <Header 
+        user={user} 
+        onLogout={handleLogout} 
+        onOpenSettings={() => setShowSetupModal(true)} 
+      />
+      
+      {/* The main content area will expand to fill available space */}
       <main className="flex-grow">
         {user ? (
-          <Dashboard user={user} onLogout={handleLogout} />
+          // If a user is logged in, show the Dashboard
+          <Dashboard 
+            user={user} 
+            showSetupModal={showSetupModal} 
+            setShowSetupModal={setShowSetupModal} 
+          />
         ) : (
-          <Login onGuestLogin={handleGuestLogin} />
+          // Otherwise, show the Login screen
+          <Login />
         )}
       </main>
 
+      {/* The Footer is displayed at the bottom of the page */}
       <Footer />
     </div>
   );
