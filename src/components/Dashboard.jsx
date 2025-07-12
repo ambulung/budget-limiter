@@ -153,6 +153,7 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal }) => {
     } catch (error) { toast.error("Failed to save settings."); console.error(error); }
   };
 
+  // A more user-friendly version of the function in Dashboard.jsx
 
   const handleAddExpense = async (e) => {
     e.preventDefault();
@@ -180,6 +181,19 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal }) => {
     setNewExpenseAmount('');
     setNewExpenseNotes('');
     toast.success("Expense added!");
+  };
+
+  const handleUpdateExpense = async (updatedExpense) => {
+    const expenseDocRef = doc(db, 'users', user.uid, 'expenses', updatedExpense.id);
+    try {
+      await updateDoc(expenseDocRef, {
+        description: updatedExpense.description,
+        amount: updatedExpense.amount,
+        notes: updatedExpense.notes,
+      });
+      toast.success("Expense updated!");
+      setEditingExpense(null);
+    } catch (error) { toast.error("Failed to update expense."); }
   };
 
   const handleDeleteExpense = async (expenseId) => {
