@@ -98,13 +98,11 @@ const SetupModal = ({ isOpen, onSave, onClose, user, initialSettings }) => {
               <label className="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Currency</label>
               <div className="relative">
                 <select value={currency} onChange={(e) => setCurrency(e.target.value)} className="w-full p-3 h-full bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none">
-                  <option value="$">USD ($)</option>
-                  <option value="€">EUR (€)</option>
-                  <option value="£">GBP (£)</option>
-                  <option value="¥">JPY (¥)</option>
-                  <option value="B$">BND (B$)</option>
-                  <option value="₹">INR (₹)</option>
-                  <option value="RM">MYR (RM)</option>
+                  <option value="$">Dollar ($)</option>
+                  <option value="€">Euro (€)</option>
+                  <option value="£">Pound (£)</option>
+                  <option value="¥">Yen (¥)</option>
+                  <option value="₹">Rupee (₹)</option>
                 </select>
                 <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
                   <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
