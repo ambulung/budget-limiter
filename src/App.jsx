@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { onAuthStateChanged, signOut } from "firebase/auth";
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { auth } from './firebase';
 import { Toaster, toast } from 'react-hot-toast';
 
@@ -7,6 +8,11 @@ import Header from './components/Header';
 import Dashboard from './components/Dashboard';
 import Login from './components/Login';
 import Footer from './components/Footer';
+
+// ProtectedRoute component to restrict access to Dashboard
+const ProtectedRoute = ({ user, children }) => {
+  return user ? children : <Navigate to="/login" replace />;
+};
 
 function App() {
   const [user, setUser] = useState(null);
@@ -21,7 +27,7 @@ function App() {
       setLoading(false);
     });
     return () => unsubscribe();
-  }, []);
+  }, [user]);
 
   const handleGuestLogin = () => {
     const guestUser = {
@@ -30,7 +36,7 @@ function App() {
       isGuest: true,
     };
     setUser(guestUser);
-    toast.success("You are now in Guest Mode!");
+    toast.success('You are now in Guest Mode!');
   };
 
   const handleLogout = async () => {
@@ -39,9 +45,10 @@ function App() {
         await signOut(auth);
       }
       setUser(null); // This handles both guest and real user logout
+      toast.success('Logged out successfully!');
     } catch (error) {
-      console.error("Logout error:", error);
-      toast.error("Failed to log out.");
+      console.error('Logout error:', error);
+      toast.error('Failed to log out.');
     }
   };
 
@@ -54,20 +61,27 @@ function App() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-100 dark:bg-gray-900 flex flex-col">
-      <Toaster position="top-center" reverseOrder={false} />
-      <Header />
-      
-      <main className="flex-grow">
-        {user ? (
-          <Dashboard user={user} onLogout={handleLogout} />
-        ) : (
-          <Login onGuestLogin={handleGuestLogin} />
-        )}
-      </main>
-
-      <Footer />
-    </div>
+    <Router>
+      <div className="min-h-screen bg-slate-100 dark:bg-gray-900 flex flex-col">
+        <Toaster position="top-center" reverseOrder={false} />
+        <Header user={user} onLogout={handleLogout} />
+        <main className="flex-grow">
+          <Routes>
+            <Route path="/login" element={<Login onGuestLogin={handleGuestLogin} />} />
+            <Route path="/" element={<Login onGuestLogin={handleGuestLogin} />} />
+            <Route
+              path="/dashboard"
+              element={
+                <ProtectedRoute user={user}>
+                  <Dashboard user={user} onLogout={handleLogout} />
+                </ProtectedRoute>
+              }
+            />
+          </Routes>
+        </main>
+        <Footer />
+      </div>
+    </Router>
   );
 }
 

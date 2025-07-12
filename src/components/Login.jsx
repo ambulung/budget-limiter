@@ -9,7 +9,6 @@ import {
 } from 'firebase/auth';
 import { useNavigate } from 'react-router-dom';
 import PasswordStrengthIndicator from './PasswordStrengthIndicator';
-import Dashboard from './Dashboard';
 
 // SVG Icons for Password Toggle
 const EyeIcon = () => (
@@ -53,7 +52,6 @@ const EyeSlashedIcon = () => (
 );
 
 const Login = () => {
-  const [user, setUser] = useState(null);
   const [isLoginView, setIsLoginView] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -66,13 +64,11 @@ const Login = () => {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       if (currentUser) {
-        setUser(currentUser);
-      } else {
-        setUser(null);
+        navigate('/dashboard');
       }
     });
     return () => unsubscribe();
-  }, []);
+  }, [navigate]);
 
   const handleGoogleLogin = async () => {
     if (isProcessing) return;
@@ -81,6 +77,7 @@ const Login = () => {
 
     try {
       await signInWithPopup(auth, googleProvider);
+      // Navigation to /dashboard is handled by onAuthStateChanged
     } catch (err) {
       if (err.code !== 'auth/cancelled-popup-request' && err.code !== 'auth/popup-closed-by-user') {
         setError('Failed to sign in with Google. Please try again.');
@@ -110,6 +107,7 @@ const Login = () => {
         }
         await createUserWithEmailAndPassword(auth, email, password);
       }
+      // Navigation to /dashboard is handled by onAuthStateChanged
     } catch (err) {
       if (err instanceof Error) {
         setError(err.message);
@@ -134,23 +132,9 @@ const Login = () => {
   };
 
   const handleGuestLogin = () => {
-    setUser({ isGuest: true, uid: 'guest', displayName: 'Guest' });
+    if (isProcessing) return;
+    navigate('/dashboard', { state: { isGuest: true, uid: 'guest', displayName: 'Guest' } });
   };
-
-  const handleLogout = async () => {
-    try {
-      await signOut(auth);
-      setUser(null);
-      navigate('/login');
-    } catch (error) {
-      console.error('Logout failed:', error);
-      setError('Failed to log out. Please try again.');
-    }
-  };
-
-  if (user) {
-    return <Dashboard user={user} onLogout={handleLogout} />;
-  }
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-slate-100 dark:bg-gray-900 p-4">

@@ -1,7 +1,7 @@
-// Header.jsx
+// src/components/Header.jsx
 import React from 'react';
 import ThemeToggle from './ThemeToggle';
-import { SettingsIcon } from './Dashboard'; // Import SettingsIcon from Dashboard or a shared Icons file
+import { SettingsIcon } from './Dashboard';
 
 const Header = ({ user, onLogout, appTitle, appIcon, isGuest, onSettingsClick }) => {
   return (
