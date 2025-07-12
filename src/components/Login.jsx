@@ -3,7 +3,8 @@ import { auth, googleProvider } from '../firebase';
 import { 
   createUserWithEmailAndPassword, 
   signInWithEmailAndPassword, 
-  signInWithPopup 
+  signInWithPopup,
+  signInAnonymously // Import the anonymous sign-in function
 } from 'firebase/auth';
 import PasswordStrengthIndicator from './PasswordStrengthIndicator';
 
@@ -21,7 +22,7 @@ const EyeSlashedIcon = () => (
   </svg>
 );
 
-const Login = ({ onGuestLogin }) => {
+const Login = () => {
   const [isLoginView, setIsLoginView] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -34,7 +35,6 @@ const Login = ({ onGuestLogin }) => {
     if (isProcessing) return;
     setIsProcessing(true);
     setError('');
-
     try {
       await signInWithPopup(auth, googleProvider);
     } catch (err) {
@@ -46,18 +46,28 @@ const Login = ({ onGuestLogin }) => {
     }
   };
 
+  const handleAnonymousLogin = async () => {
+    if (isProcessing) return;
+    setIsProcessing(true);
+    setError('');
+    try {
+      await signInAnonymously(auth);
+    } catch (err) {
+      setError('Failed to start a guest session. Please try again.');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (isProcessing) return;
-    
     setIsProcessing(true);
     setError('');
-
     try {
       if (!email.includes('@') || !email.split('@')[1]?.includes('.')) {
         throw new Error('Please enter a full email address.');
       }
-
       if (isLoginView) {
         await signInWithEmailAndPassword(auth, email, password);
       } else {
@@ -71,17 +81,10 @@ const Login = ({ onGuestLogin }) => {
         setError(err.message);
       } else {
         switch (err.code) {
-          case 'auth/invalid-credential':
-            setError('Incorrect email or password.');
-            break;
-          case 'auth/email-already-in-use':
-            setError('This email address is already in use.');
-            break;
-          case 'auth/weak-password':
-            setError('Password must be at least 6 characters.');
-            break;
-          default:
-            setError('An error occurred. Please try again.');
+          case 'auth/invalid-credential': setError('Incorrect email or password.'); break;
+          case 'auth/email-already-in-use': setError('This email address is already in use.'); break;
+          case 'auth/weak-password': setError('Password must be at least 6 characters.'); break;
+          default: setError('An error occurred. Please try again.');
         }
       }
     } finally {
@@ -108,7 +111,6 @@ const Login = ({ onGuestLogin }) => {
             required
             className="w-full p-3 bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
-          
           <div className="relative">
             <input
               type={showPassword ? 'text' : 'password'}
@@ -127,7 +129,6 @@ const Login = ({ onGuestLogin }) => {
               {showPassword ? <EyeSlashedIcon /> : <EyeIcon />}
             </button>
           </div>
-          
           {!isLoginView && (
             <>
               <div className="relative">
@@ -139,7 +140,7 @@ const Login = ({ onGuestLogin }) => {
                   required
                   className="w-full p-3 bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 pr-10"
                 />
-                 <button
+                <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
@@ -151,9 +152,7 @@ const Login = ({ onGuestLogin }) => {
               <PasswordStrengthIndicator password={password} />
             </>
           )}
-
           {error && <p className="text-red-500 text-sm text-center">{error}</p>}
-
           <button 
             type="submit" 
             className="w-full p-3 bg-blue-600 text-white font-bold rounded-lg shadow-md hover:bg-blue-700 transition-all disabled:bg-blue-400 disabled:cursor-not-allowed"
@@ -167,11 +166,7 @@ const Login = ({ onGuestLogin }) => {
           <p className="text-sm text-gray-600 dark:text-gray-400">
             {isLoginView ? "Don't have an account?" : 'Already have an account?'}
             <button 
-              onClick={() => { 
-                if (isProcessing) return;
-                setIsLoginView(!isLoginView); 
-                setError(''); 
-              }} 
+              onClick={() => { if (isProcessing) return; setIsLoginView(!isLoginView); setError(''); }} 
               className="font-semibold text-blue-600 dark:text-blue-400 hover:underline ml-1"
             >
               {isLoginView ? 'Sign Up' : 'Login'}
@@ -179,9 +174,9 @@ const Login = ({ onGuestLogin }) => {
           </p>
         </div>
 
-        <div className="my-4 flex items-center">
+        <div className="my-6 flex items-center">
           <div className="flex-grow border-t border-gray-300 dark:border-gray-600"></div>
-          <span className="mx-4 text-xs text-gray-500 dark:text-gray-400">OR</span>
+          <span className="mx-4 text-sm text-gray-500 dark:text-gray-400">OR</span>
           <div className="flex-grow border-t border-gray-300 dark:border-gray-600"></div>
         </div>
 
@@ -196,15 +191,13 @@ const Login = ({ onGuestLogin }) => {
           {isProcessing ? 'Opening...' : 'Sign in with Google'}
         </button>
 
-        <div className="mt-6 text-center">
-            <button 
-              onClick={onGuestLogin}
-              className="text-sm font-semibold text-gray-600 dark:text-gray-400 hover:underline disabled:opacity-50"
-              disabled={isProcessing}
-            >
-              Try without logging in
-            </button>
-        </div>
+        <button 
+          onClick={handleAnonymousLogin}
+          className="w-full mt-4 text-center text-sm text-gray-600 dark:text-gray-400 font-semibold hover:underline disabled:opacity-50"
+          disabled={isProcessing}
+        >
+          Continue as Guest
+        </button>
       </div>
     </div>
   );
