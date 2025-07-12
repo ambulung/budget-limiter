@@ -1,18 +1,17 @@
 // src/components/EditExpenseModal.js
 
 import React, { useState, useEffect } from 'react';
+import { toast } from 'react-hot-toast'; // <-- Make sure this import is present
 
 const EditExpenseModal = ({ isOpen, onClose, onSave, expense }) => {
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState('');
   const [notes, setNotes] = useState('');
 
-  // When the 'expense' prop changes (i.e., when the modal is opened for a new item),
-  // update the form fields with that expense's data.
   useEffect(() => {
     if (expense) {
       setDescription(expense.description || '');
-      setAmount(expense.amount || '');
+      setAmount(expense.amount?.toString() || ''); // Use optional chaining for safety
       setNotes(expense.notes || '');
     }
   }, [expense]);
@@ -22,7 +21,7 @@ const EditExpenseModal = ({ isOpen, onClose, onSave, expense }) => {
   const handleSave = () => {
     const amountNumber = Number(amount);
 
-    // Use the safe, two-step validation here as well
+    // This validation is correct and necessary.
     if (!description || !description.trim()) {
       return toast.error("Please enter a description.");
     }
