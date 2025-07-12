@@ -6,7 +6,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
 // Component Imports
-import ThemeToggle from './ThemeToggle'; // Assuming you have this component
+import ThemeToggle from './ThemeToggle';
 import SetupModal from './SetupModal';
 import EditExpenseModal from './EditExpenseModal';
 import ConfirmationModal from './ConfirmationModal';
@@ -33,8 +33,8 @@ const formatMoney = (amount, currencySymbol, numberFormat) => {
 };
 
 // --- Main Component ---
-const Dashboard = ({ user, onLogout }) => { // I've added onLogout back to the props
-  const [showSetupModal, setShowSetupModal] = useState(false); // State moved back inside
+const Dashboard = ({ user, onLogout }) => {
+  const [showSetupModal, setShowSetupModal] = useState(false);
   const [isNewUser, setIsNewUser] = useState(false);
   const [editingExpense, setEditingExpense] = useState(null);
   const [showConfirmDeleteAllModal, setShowConfirmDeleteAllModal] = useState(false);
@@ -85,9 +85,76 @@ const Dashboard = ({ user, onLogout }) => { // I've added onLogout back to the p
     return () => unsubscribe();
   }, [user.uid]);
 
-  const handleDownloadPdf = () => { /* ... (no changes here) ... */ };
-  const handleDeleteAllExpenses = async () => { /* ... (no changes here) ... */ };
-  const handleSaveSettings = async (settings) => { /* ... (no changes here) ... */ };
+  const handleDownloadPdf = () => {
+    if (expenses.length === 0) {
+      toast.error("No expenses to export.");
+      return;
+    }
+    const doc = new jsPDF();
+    doc.setFontSize(18);
+    doc.text("Expense Report", 14, 22);
+    doc.setFontSize(11);
+    doc.setTextColor(100);
+    doc.text(`For: ${appTitle}`, 14, 30);
+    doc.text(`Date: ${new Date().toLocaleDateString()}`, 14, 36);
+
+    const tableColumn = ["Date", "Description", "Notes", "Amount"];
+    const tableRows = expenses.map(expense => [
+      expense.createdAt.toDate().toLocaleDateString(),
+      expense.description,
+      expense.notes || "-",
+      formatMoney(expense.amount, currency, numberFormat)
+    ]);
+
+    autoTable(doc, {
+      head: [tableColumn],
+      body: tableRows,
+      startY: 45,
+      styles: { halign: 'left' },
+      headStyles: { fillColor: [36, 79, 148] },
+      columnStyles: { 3: { halign: 'right' } }
+    });
+
+    const finalY = doc.lastAutoTable.finalY;
+    doc.setFontSize(12);
+    doc.text(`Total Expenses: ${formatMoney(totalExpenses, currency, numberFormat)}`, 14, finalY + 10);
+    doc.text(`Remaining Budget: ${formatMoney(remainingBudget, currency, numberFormat)}`, 14, finalY + 17);
+
+    doc.save(`expense-report-${new Date().toISOString().slice(0, 10)}.pdf`);
+    toast.success("Report downloaded!");
+  };
+
+  const handleDeleteAllExpenses = async () => {
+    setShowConfirmDeleteAllModal(false);
+    if (expenses.length === 0) {
+      return toast.error("There are no expenses to delete.");
+    }
+    const deletionPromise = Promise.all(
+      expenses.map(expense =>
+        deleteDoc(doc(db, 'users', user.uid, 'expenses', expense.id))
+      )
+    );
+    toast.promise(deletionPromise, {
+      loading: 'Deleting all expenses...',
+      success: 'All expenses deleted successfully!',
+      error: 'Failed to delete all expenses.',
+    });
+  };
+
+  const handleSaveSettings = async (settings) => {
+    if (!settings.budget || settings.budget <= 0) return toast.error("Please enter a valid budget.");
+    const userDocRef = doc(db, 'users', user.uid);
+    try {
+      await setDoc(userDocRef, settings, { merge: true });
+      setBudget(settings.budget);
+      setCurrency(settings.currency);
+      setAppTitle(settings.appTitle);
+      setAppIcon(settings.appIcon);
+      setNumberFormat(settings.numberFormat);
+      setShowSetupModal(false);
+      toast.success("Settings saved!");
+    } catch (error) { toast.error("Failed to save settings."); console.error(error); }
+  };
 
   const handleAddExpense = async (e) => {
     e.preventDefault();
@@ -115,10 +182,51 @@ const Dashboard = ({ user, onLogout }) => { // I've added onLogout back to the p
     toast.success("Expense added!");
   };
 
-  const handleUpdateExpense = async (updatedExpense) => { /* ... (no changes here) ... */ };
-  const handleDeleteExpense = async (expenseId) => { /* ... (no changes here) ... */ };
-  const handleUndoDelete = async (idToRestore, dataToRestore) => { /* ... (no changes here) ... */ };
-  const getProgressBarColor = () => { /* ... (no changes here) ... */ };
+  const handleUpdateExpense = async (updatedExpense) => {
+    const expenseDocRef = doc(db, 'users', user.uid, 'expenses', updatedExpense.id);
+    try {
+      await updateDoc(expenseDocRef, {
+        description: updatedExpense.description,
+        amount: updatedExpense.amount,
+        notes: updatedExpense.notes,
+      });
+      toast.success("Expense updated!");
+      setEditingExpense(null);
+    } catch (error) { toast.error("Failed to update expense."); }
+  };
+
+  const handleDeleteExpense = async (expenseId) => {
+    const expenseDocRef = doc(db, 'users', user.uid, 'expenses', expenseId);
+    try {
+      const docSnap = await getDoc(expenseDocRef);
+      if (!docSnap.exists()) return;
+      const deletedData = docSnap.data();
+      await deleteDoc(expenseDocRef);
+      toast((t) => (
+        <span className="flex items-center gap-4">
+          Expense deleted.
+          <button className="px-3 py-1 bg-blue-500 text-white rounded-md font-semibold" onClick={() => { handleUndoDelete(expenseId, deletedData); toast.dismiss(t.id); }}>
+            Undo
+          </button>
+        </span>
+      ), { duration: 6000 });
+    } catch (error) { toast.error("Failed to delete expense."); }
+  };
+
+  const handleUndoDelete = async (idToRestore, dataToRestore) => {
+    if (!idToRestore || !dataToRestore) return;
+    const expenseDocRef = doc(db, 'users', user.uid, 'expenses', idToRestore);
+    try {
+      await setDoc(expenseDocRef, dataToRestore);
+      toast.success("Expense restored!");
+    } catch (error) { toast.error("Failed to restore expense."); }
+  };
+
+  const getProgressBarColor = () => {
+    if (progress >= 80) return 'bg-red-500';
+    if (progress >= 60) return 'bg-orange-500';
+    return 'bg-blue-600';
+  };
 
   return (
     <>
@@ -144,7 +252,7 @@ const Dashboard = ({ user, onLogout }) => { // I've added onLogout back to the p
       />
 
       <div className="max-w-5xl mx-auto p-4 md:p-8">
-         <div className="flex justify-between items-center gap-4 mb-8">
+        <div className="flex justify-between items-center gap-4 mb-8">
           <div className="flex items-center gap-3 min-w-0">
             <img src={appIcon} alt="App Icon" className="w-16 h-16 object-cover flex-shrink-0 rounded-lg" />
             <h1 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-gray-100 truncate">
@@ -152,19 +260,30 @@ const Dashboard = ({ user, onLogout }) => { // I've added onLogout back to the p
             </h1>
           </div>
           <div className="flex items-center gap-4 flex-shrink-0">
-              <button onClick={() => setShowSetupModal(true)} className="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors" title="Settings">
-                <SettingsIcon />
-              </button>
-              <ThemeToggle />
-              <button onClick={onLogout} className="px-4 py-2 bg-red-500 text-white font-semibold rounded-lg shadow-md hover:bg-red-600 transition-all">
-                Logout
-              </button>
+            <button onClick={() => setShowSetupModal(true)} className="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors" title="Settings">
+              <SettingsIcon />
+            </button>
+            <ThemeToggle />
+            <button onClick={onLogout} className="px-4 py-2 bg-red-500 text-white font-semibold rounded-lg shadow-md hover:bg-red-600 transition-all">
+              Logout
+            </button>
           </div>
         </div>
 
         <main>
           <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md mb-8">
-            {/* ... (progress bar section, no changes) ... */}
+            <div className="flex justify-between items-center mb-2">
+              <div className="text-2xl font-bold text-gray-800 dark:text-gray-100">
+                {formatMoney(totalExpenses, currency, numberFormat)}
+                <span className="text-gray-400 dark:text-gray-500 text-lg"> / {formatMoney(budget, currency, numberFormat)}</span>
+              </div>
+            </div>
+            <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-4 mb-2">
+              <div className={`h-4 rounded-full transition-all duration-500 ${getProgressBarColor()}`} style={{ width: `${Math.min(progress, 100)}%` }}></div>
+            </div>
+            <p className="text-right font-medium text-gray-600 dark:text-gray-400">
+              {formatMoney(remainingBudget, currency, numberFormat)} Remaining
+            </p>
           </div>
           <div className="grid md:grid-cols-2 gap-8">
             <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md">
