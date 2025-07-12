@@ -59,18 +59,18 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal }) => {
         const userData = docSnap.data();
         setBudget(userData.budget || 1000);
         setCurrency(userData.currency || '$');
-        setAppTitle(userData.appTitle || `${user.displayName}'s Budget`);
+        setAppTitle(userData.appTitle || (user.isAnonymous ? 'Guest Budget' : `${user.displayName}'s Budget`));
         setAppIcon(userData.appIcon || user.photoURL || DEFAULT_ICON_URL);
         setNumberFormat(userData.numberFormat || 'comma');
       } else {
         setIsNewUser(true);
-        setShowSetupModal(true); // This now comes from props
-        setAppTitle(`${user.displayName}'s Budget`);
+        setShowSetupModal(true);
+        setAppTitle(user.isAnonymous ? 'Guest Budget' : `${user.displayName}'s Budget`);
         setAppIcon(user.photoURL || DEFAULT_ICON_URL);
       }
     };
     fetchData();
-  }, [user.uid, user.displayName, user.photoURL, setShowSetupModal]);
+  }, [user.uid, user.displayName, user.photoURL, user.isAnonymous, setShowSetupModal]);
 
   useEffect(() => {
     if (!user.uid) return;
@@ -239,12 +239,12 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal }) => {
         onConfirm={handleDeleteAllExpenses}
         title="Delete All Expenses?"
         message="Are you sure you want to permanently delete all of your expenses? This action cannot be undone."
+        confirmButtonText="Yes, Delete All"
       />
 
       <div className="max-w-5xl mx-auto p-4 md:p-8">
-        {/* The user controls (settings, theme, logout) have been moved to the global Header */}
         <div className="flex items-center gap-4 mb-8">
-          <img src={appIcon} alt="App Icon" className="w-16 h-16 object-cover flex-shrink-0" />
+          <img src={appIcon} alt="App Icon" className="w-16 h-16 object-cover flex-shrink-0 rounded-lg" />
           <h1 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-gray-100 truncate">
             {appTitle}
           </h1>
@@ -269,7 +269,7 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal }) => {
             <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md">
               <h3 className="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-100">Add New Expense</h3>
               <form onSubmit={handleAddExpense} className="flex flex-col gap-4">
-                <input value={newExpenseDesc} onChange={(e) => setNewExpenseDesc(e.target.value)} placeholder="Description" className="p-3 bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                <input value={newExpenseDesc} onChange={(e) => setNewExpenseDesc(e.T)} placeholder="Description" className="p-3 bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
                 <input type="number" value={newExpenseAmount} onChange={(e) => setNewExpenseAmount(e.target.value)} placeholder="Amount" className="p-3 bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
                 <textarea 
                   value={newExpenseNotes} 

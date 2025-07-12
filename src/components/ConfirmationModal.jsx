@@ -1,5 +1,3 @@
-// src/components/ConfirmationModal.js
-
 import React from 'react';
 
 // A generic warning icon
@@ -9,7 +7,7 @@ const WarningIcon = () => (
   </svg>
 );
 
-const ConfirmationModal = ({ isOpen, onClose, onConfirm, title, message }) => {
+const ConfirmationModal = ({ isOpen, onClose, onConfirm, title, message, confirmButtonText }) => {
   if (!isOpen) return null;
 
   return (
@@ -29,7 +27,8 @@ const ConfirmationModal = ({ isOpen, onClose, onConfirm, title, message }) => {
             onClick={onConfirm}
             className="px-6 py-2 bg-red-600 text-white font-semibold rounded-lg shadow-md hover:bg-red-700 transition-all"
           >
-            Yes, Delete All
+            {/* Use the new prop for the button text, with a sensible default */}
+            {confirmButtonText || 'Confirm'}
           </button>
         </div>
       </div>
