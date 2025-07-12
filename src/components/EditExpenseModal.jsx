@@ -21,18 +21,23 @@ const EditExpenseModal = ({ isOpen, onClose, onSave, expense }) => {
 
   const handleSave = () => {
     const amountNumber = Number(amount);
-    if (!description || isNaN(amountNumber) || amountNumber <= 0) {
-      alert("Please enter a valid description and amount."); // Or use a toast
-      return;
+
+    // Use the safe, two-step validation here as well
+    if (!description || !description.trim()) {
+      return toast.error("Please enter a description.");
     }
+    if (isNaN(amountNumber) || amountNumber <= 0) {
+      return toast.error("Please enter a valid, positive amount.");
+    }
+
     onSave({
-      ...expense, // Keep the original id and other properties
+      ...expense,
       description,
       amount: amountNumber,
       notes,
     });
   };
-
+  
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center">
       <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-2xl w-full max-w-md m-4">
