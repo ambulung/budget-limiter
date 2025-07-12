@@ -6,7 +6,6 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
 // Component Imports
-import ThemeToggle from './ThemeToggle';
 import SetupModal from './SetupModal';
 import EditExpenseModal from './EditExpenseModal';
 import ConfirmationModal from './ConfirmationModal';
@@ -14,7 +13,6 @@ import ConfirmationModal from './ConfirmationModal';
 const DEFAULT_ICON_URL = '/default-icon.jpg';
 
 // --- SVG Icons ---
-const SettingsIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg> );
 const EditIcon = () => (<svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.5L15.232 5.232z" /></svg>);
 const DeleteIcon = () => (<svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-4v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>);
 const DownloadIcon = () => (<svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>);
@@ -33,7 +31,7 @@ const formatMoney = (amount, currencySymbol, numberFormat) => {
 };
 
 // --- Main Component ---
-const Dashboard = ({ user, onLogout }) => {
+const Dashboard = ({ user }) => {
   const [showSetupModal, setShowSetupModal] = useState(false);
   const [isNewUser, setIsNewUser] = useState(false);
   const [editingExpense, setEditingExpense] = useState(null);
@@ -51,7 +49,7 @@ const Dashboard = ({ user, onLogout }) => {
 
   const totalExpenses = expenses.reduce((sum, expense) => sum + expense.amount, 0);
   const remainingBudget = budget - totalExpenses;
-  const progress = budget > 0 ? (totalExpenses / budget) * 100 : 0;
+  const remainingProgress = budget > 0 ? (remainingBudget / budget) * 100 : 0;
 
   useEffect(() => {
     const userDocRef = doc(db, 'users', user.uid);
@@ -84,6 +82,12 @@ const Dashboard = ({ user, onLogout }) => {
     });
     return () => unsubscribe();
   }, [user.uid]);
+
+  const getProgressBarColor = () => {
+    if (remainingProgress <= 20) return 'bg-red-500';
+    if (remainingProgress <= 40) return 'bg-orange-500';
+    return 'bg-green-600';
+  };
 
   const handleDownloadPdf = () => {
     if (expenses.length === 0) {
@@ -159,15 +163,12 @@ const Dashboard = ({ user, onLogout }) => {
   const handleAddExpense = async (e) => {
     e.preventDefault();
     const amount = Number(newExpenseAmount);
-
     if (!newExpenseDesc || !newExpenseDesc.trim()) {
       return toast.error("Please enter a description for the expense.");
     }
-
     if (isNaN(amount) || amount <= 0) {
       return toast.error("Please enter a valid, positive amount.");
     }
-
     const expensesColRef = collection(db, 'users', user.uid, 'expenses');
     await addDoc(expensesColRef, {
       description: newExpenseDesc,
@@ -175,7 +176,6 @@ const Dashboard = ({ user, onLogout }) => {
       createdAt: new Date(),
       notes: newExpenseNotes,
     });
-
     setNewExpenseDesc('');
     setNewExpenseAmount('');
     setNewExpenseNotes('');
@@ -222,12 +222,6 @@ const Dashboard = ({ user, onLogout }) => {
     } catch (error) { toast.error("Failed to restore expense."); }
   };
 
-  const getProgressBarColor = () => {
-    if (progress >= 80) return 'bg-red-500';
-    if (progress >= 60) return 'bg-orange-500';
-    return 'bg-blue-600';
-  };
-
   return (
     <>
       <SetupModal
@@ -252,22 +246,11 @@ const Dashboard = ({ user, onLogout }) => {
       />
 
       <div className="max-w-5xl mx-auto p-4 md:p-8">
-        <div className="flex justify-between items-center gap-4 mb-8">
-          <div className="flex items-center gap-3 min-w-0">
-            <img src={appIcon} alt="App Icon" className="w-16 h-16 object-cover flex-shrink-0 rounded-lg" />
-            <h1 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-gray-100 truncate">
-              {appTitle}
-            </h1>
-          </div>
-          <div className="flex items-center gap-4 flex-shrink-0">
-            <button onClick={() => setShowSetupModal(true)} className="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors" title="Settings">
-              <SettingsIcon />
-            </button>
-            <ThemeToggle />
-            <button onClick={onLogout} className="px-4 py-2 bg-red-500 text-white font-semibold rounded-lg shadow-md hover:bg-red-600 transition-all">
-              Logout
-            </button>
-          </div>
+        <div className="flex items-center gap-4 mb-8">
+          <img src={appIcon} alt="App Icon" className="w-16 h-16 object-cover flex-shrink-0 rounded-lg" />
+          <h1 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-gray-100 truncate">
+            {appTitle}
+          </h1>
         </div>
 
         <main>
@@ -279,7 +262,10 @@ const Dashboard = ({ user, onLogout }) => {
               </div>
             </div>
             <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-4 mb-2">
-              <div className={`h-4 rounded-full transition-all duration-500 ${getProgressBarColor()}`} style={{ width: `${Math.min(progress, 100)}%` }}></div>
+              <div
+                className={`h-4 rounded-full transition-all duration-500 ${getProgressBarColor()}`}
+                style={{ width: `${Math.max(0, remainingProgress)}%` }}
+              ></div>
             </div>
             <p className="text-right font-medium text-gray-600 dark:text-gray-400">
               {formatMoney(remainingBudget, currency, numberFormat)} Remaining
@@ -289,10 +275,7 @@ const Dashboard = ({ user, onLogout }) => {
             <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md">
               <h3 className="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-100">Add New Expense</h3>
               <form onSubmit={handleAddExpense} className="flex flex-col gap-4">
-                
-                {/* THIS IS THE CORRECTED LINE */}
                 <input value={newExpenseDesc} onChange={(e) => setNewExpenseDesc(e.target.value)} placeholder="Description" className="p-3 bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                
                 <input type="number" value={newExpenseAmount} onChange={(e) => setNewExpenseAmount(e.target.value)} placeholder="Amount" className="p-3 bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
                 <textarea
                   value={newExpenseNotes}
