@@ -122,7 +122,6 @@ const Login = () => {
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-slate-100 dark:bg-gray-900 p-4">
       
-      {/* --- MOVED AND STYLED: BRANDING HEADER --- */}
       <h2 className="text-3xl font-bold text-center text-white tracking-widest mb-6">
         BUDGET.LIMIT
       </h2>
@@ -242,6 +241,11 @@ const Login = () => {
                 {isProcessing && processingAction === 'guest' ? 'Signing in...' : 'Continue as Guest'}
             </button>
         </div>
+
+        {/* --- NEW: Guest Disclaimer --- */}
+        <p className="mt-6 text-xs text-center text-gray-500 dark:text-gray-400 italic">
+          Please note: Guest accounts are temporary. Data will be deleted after 30 days of inactivity.
+        </p>
 
       </div>
     </div>
