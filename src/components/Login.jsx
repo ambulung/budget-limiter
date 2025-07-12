@@ -124,6 +124,12 @@ const Login = () => {
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-slate-100 dark:bg-gray-900 p-4">
       <div className="w-full max-w-md bg-white dark:bg-gray-800 p-8 rounded-xl shadow-2xl">
+        
+        {/* --- ADDED: BRANDING HEADER --- */}
+        <h2 className="text-2xl font-bold text-center text-gray-400 dark:text-gray-500 tracking-widest mb-8">
+          BUDGET.LIMIT
+        </h2>
+
         <h1 className="text-3xl font-bold mb-2 text-center text-gray-800 dark:text-gray-100">
           {isLoginView ? 'Welcome Back!' : 'Create an Account'}
         </h1>
