@@ -3,7 +3,8 @@ import { auth, googleProvider } from '../firebase';
 import { 
   createUserWithEmailAndPassword, 
   signInWithEmailAndPassword, 
-  signInWithPopup 
+  signInWithPopup,
+  signInAnonymously // <-- Import anonymous sign-in
 } from 'firebase/auth';
 import PasswordStrengthIndicator from './PasswordStrengthIndicator';
 
@@ -21,6 +22,13 @@ const EyeSlashedIcon = () => (
   </svg>
 );
 
+// --- NEW: SVG Icon for Guest Mode ---
+const GuestIcon = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+    </svg>
+);
+
 const Login = () => {
   const [isLoginView, setIsLoginView] = useState(true);
   const [email, setEmail] = useState('');
@@ -28,10 +36,31 @@ const Login = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [processingAction, setProcessingAction] = useState(''); // To show specific processing text
   const [showPassword, setShowPassword] = useState(false);
+
+  // --- NEW: Handler for Guest Login ---
+  const handleGuestLogin = async () => {
+    if (isProcessing) return;
+    setProcessingAction('guest');
+    setIsProcessing(true);
+    setError('');
+
+    try {
+      await signInAnonymously(auth);
+      // Upon success, the onAuthStateChanged listener in App.jsx will handle the redirect.
+    } catch (err) {
+      console.error("Guest login error:", err);
+      setError('Failed to start guest session. Please try again.');
+    } finally {
+      setIsProcessing(false);
+      setProcessingAction('');
+    }
+  };
 
   const handleGoogleLogin = async () => {
     if (isProcessing) return;
+    setProcessingAction('google');
     setIsProcessing(true);
     setError('');
 
@@ -43,6 +72,7 @@ const Login = () => {
       }
     } finally {
       setIsProcessing(false);
+      setProcessingAction('');
     }
   };
 
@@ -50,6 +80,7 @@ const Login = () => {
     e.preventDefault();
     if (isProcessing) return;
     
+    setProcessingAction('email');
     setIsProcessing(true);
     setError('');
 
@@ -86,6 +117,7 @@ const Login = () => {
       }
     } finally {
       setIsProcessing(false);
+      setProcessingAction('');
     }
   };
 
@@ -159,7 +191,7 @@ const Login = () => {
             className="w-full p-3 bg-blue-600 text-white font-bold rounded-lg shadow-md hover:bg-blue-700 transition-all disabled:bg-blue-400 disabled:cursor-not-allowed"
             disabled={isProcessing}
           >
-            {isProcessing ? 'Processing...' : (isLoginView ? 'Login' : 'Sign Up')}
+            {isProcessing && processingAction === 'email' ? 'Processing...' : (isLoginView ? 'Login' : 'Sign Up')}
           </button>
         </form>
 
@@ -184,17 +216,31 @@ const Login = () => {
           <span className="mx-4 text-sm text-gray-500 dark:text-gray-400">OR</span>
           <div className="flex-grow border-t border-gray-300 dark:border-gray-600"></div>
         </div>
+        
+        {/* --- MODIFIED: Container for social and guest logins --- */}
+        <div className="space-y-3">
+            <button 
+            onClick={handleGoogleLogin} 
+            className="w-full flex items-center justify-center gap-3 px-6 py-3 border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-200 font-semibold rounded-lg shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={isProcessing}
+            >
+                <svg className="w-6 h-6" viewBox="0 0 48 48">
+                    <path fill="#FFC107" d="M43.611 20.083H42V20H24v8h11.303c-1.649 4.657-6.08 8-11.303 8c-6.627 0-12-5.373-12-12s5.373-12 12-12c3.059 0 5.842 1.154 7.961 3.039L38.802 9.92C34.553 6.186 29.65 4 24 4C12.955 4 4 12.955 4 24s8.955 20 20 20s20-8.955 20-20c0-1.341-.138-2.65-.389-3.917z"></path><path fill="#FF3D00" d="M6.306 14.691l6.571 4.819C14.655 15.108 18.961 12 24 12c3.059 0 5.842 1.154 7.961 3.039l5.841-5.841C34.553 6.186 29.65 4 24 4C16.318 4 9.656 8.337 6.306 14.691z"></path><path fill="#4CAF50" d="M24 44c5.166 0 9.86-1.977 13.409-5.192l-6.19-5.238C29.211 35.091 26.715 36 24 36c-5.202 0-9.619-3.317-11.283-7.946l-6.522 5.025C9.505 39.556 16.227 44 24 44z"></path><path fill="#1976D2" d="M43.611 20.083H24v8h11.303c-.792 2.443-2.343 4.465-4.542 5.856l6.19 5.238C42.012 35.836 44 30.138 44 24c0-1.341-.138-2.65-.389-3.917z"></path>
+                </svg>
+                {isProcessing && processingAction === 'google' ? 'Opening...' : 'Sign in with Google'}
+            </button>
+            
+            {/* --- NEW: Guest Mode Button --- */}
+            <button 
+            onClick={handleGuestLogin} 
+            className="w-full flex items-center justify-center gap-3 px-6 py-3 border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-200 font-semibold rounded-lg shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={isProcessing}
+            >
+                <GuestIcon />
+                {isProcessing && processingAction === 'guest' ? 'Signing in...' : 'Continue as Guest'}
+            </button>
+        </div>
 
-        <button 
-          onClick={handleGoogleLogin} 
-          className="w-full flex items-center justify-center gap-3 px-6 py-3 border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-200 font-semibold rounded-lg shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-          disabled={isProcessing}
-        >
-          <svg className="w-6 h-6" viewBox="0 0 48 48">
-            <path fill="#FFC107" d="M43.611 20.083H42V20H24v8h11.303c-1.649 4.657-6.08 8-11.303 8c-6.627 0-12-5.373-12-12s5.373-12 12-12c3.059 0 5.842 1.154 7.961 3.039L38.802 9.92C34.553 6.186 29.65 4 24 4C12.955 4 4 12.955 4 24s8.955 20 20 20s20-8.955 20-20c0-1.341-.138-2.65-.389-3.917z"></path><path fill="#FF3D00" d="M6.306 14.691l6.571 4.819C14.655 15.108 18.961 12 24 12c3.059 0 5.842 1.154 7.961 3.039l5.841-5.841C34.553 6.186 29.65 4 24 4C16.318 4 9.656 8.337 6.306 14.691z"></path><path fill="#4CAF50" d="M24 44c5.166 0 9.86-1.977 13.409-5.192l-6.19-5.238C29.211 35.091 26.715 36 24 36c-5.202 0-9.619-3.317-11.283-7.946l-6.522 5.025C9.505 39.556 16.227 44 24 44z"></path><path fill="#1976D2" d="M43.611 20.083H24v8h11.303c-.792 2.443-2.343 4.465-4.542 5.856l6.19 5.238C42.012 35.836 44 30.138 44 24c0-1.341-.138-2.65-.389-3.917z"></path>
-          </svg>
-          {isProcessing ? 'Opening...' : 'Sign in with Google'}
-        </button>
       </div>
     </div>
   );
