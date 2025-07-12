@@ -6,9 +6,9 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
 // Component Imports
-import SetupModal from './SetupModal';
-import EditExpenseModal from './EditExpenseModal';
-import ConfirmationModal from './ConfirmationModal';
+import SetupModal from './components/SetupModal';
+import EditExpenseModal from './components/EditExpenseModal';
+import ConfirmationModal from './components/ConfirmationModal';
 
 const DEFAULT_ICON_URL = '/default-icon.jpg';
 
