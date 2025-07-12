@@ -8,9 +8,9 @@ const SetupModal = ({ isOpen, onSave, onClose, user, initialSettings }) => {
   const [title, setTitle] = useState('');
   const [budget, setBudget] = useState('1000');
   const [currency, setCurrency] = useState('$');
+  const [customCurrencySymbol, setCustomCurrencySymbol] = useState(''); // State for the custom currency input
   const [currentIconUrl, setCurrentIconUrl] = useState('');
   const [isUploading, setIsUploading] = useState(false);
-  // State for the new number formatting option
   const [numberFormat, setNumberFormat] = useState('comma');
 
   // When the modal opens, populate the form with existing settings or defaults
@@ -18,9 +18,19 @@ const SetupModal = ({ isOpen, onSave, onClose, user, initialSettings }) => {
     if (isOpen) {
       setTitle(initialSettings.appTitle || '');
       setBudget(initialSettings.budget?.toString() || '1000');
-      setCurrency(initialSettings.currency || '$');
       setCurrentIconUrl(initialSettings.appIcon || '');
       setNumberFormat(initialSettings.numberFormat || 'comma');
+
+      // Handle currency initialization, including custom ones
+      const standardCurrencies = ['$', '€', '£', '¥', '₹'];
+      const initialCurrency = initialSettings.currency || '$';
+      if (standardCurrencies.includes(initialCurrency)) {
+        setCurrency(initialCurrency);
+        setCustomCurrencySymbol(''); // Clear custom field if a standard currency is used
+      } else {
+        setCurrency('custom');
+        setCustomCurrencySymbol(initialCurrency);
+      }
     }
   }, [isOpen, initialSettings]);
 
@@ -39,7 +49,7 @@ const SetupModal = ({ isOpen, onSave, onClose, user, initialSettings }) => {
     try {
       await uploadBytes(storageRef, file);
       const downloadURL = await getDownloadURL(storageRef);
-      setCurrentIconUrl(downloadURL); // Update the icon URL in state immediately for preview
+      setCurrentIconUrl(downloadURL);
       toast.success("Icon updated! Click 'Save' to apply.", { id: uploadToast });
     } catch (error) {
       toast.error("Failed to upload icon.", { id: uploadToast });
@@ -51,12 +61,22 @@ const SetupModal = ({ isOpen, onSave, onClose, user, initialSettings }) => {
 
   const handleSave = (e) => {
     e.preventDefault();
+    
+    let finalCurrency = currency;
+    if (currency === 'custom') {
+      if (!customCurrencySymbol.trim()) {
+        toast.error('Please enter a custom currency symbol.');
+        return;
+      }
+      finalCurrency = customCurrencySymbol.trim();
+    }
+
     onSave({
       appTitle: title,
       budget: Number(budget),
-      currency: currency,
+      currency: finalCurrency,
       appIcon: currentIconUrl,
-      numberFormat: numberFormat, // Pass the new setting back on save
+      numberFormat: numberFormat,
     });
   };
 
@@ -103,6 +123,7 @@ const SetupModal = ({ isOpen, onSave, onClose, user, initialSettings }) => {
                   <option value="£">Pound (£)</option>
                   <option value="¥">Yen (¥)</option>
                   <option value="₹">Rupee (₹)</option>
+                  <option value="custom">Custom...</option>
                 </select>
                 <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
                   <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
@@ -111,6 +132,22 @@ const SetupModal = ({ isOpen, onSave, onClose, user, initialSettings }) => {
             </div>
           </div>
           
+          {/* Conditionally render the custom currency input field */}
+          {currency === 'custom' && (
+            <div>
+              <label className="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Custom Currency Symbol</label>
+              <input
+                type="text"
+                value={customCurrencySymbol}
+                onChange={(e) => setCustomCurrencySymbol(e.target.value)}
+                placeholder="e.g., CHF"
+                maxLength="5"
+                className="w-full p-3 bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                required
+              />
+            </div>
+          )}
+
           <div>
             <label className="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Number Formatting</label>
             <div className="relative">
