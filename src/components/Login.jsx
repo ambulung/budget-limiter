@@ -243,8 +243,8 @@ const Login = () => {
         </div>
 
         {/* --- NEW: Guest Disclaimer --- */}
-        <p className="mt-6 text-xs text-center text-gray-500 dark:text-gray-400 italic">
-          Guest accounts are temporary. Data will be deleted after 30 days of inactivity.
+        <p className="mt-6 text-xs text-center text-gray-500 dark:text-gray-400">
+          Guest accounts will be deleted after 30 days of inactivity.
         </p>
 
       </div>
