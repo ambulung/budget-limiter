@@ -69,12 +69,12 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
   const [expenses, setExpenses] = useState([]);
   const [newExpenseDesc, setNewExpenseDesc] = useState('');
   const [newExpenseAmount, setNewExpenseAmount] = useState('');
-  const [newExpenseNotes, setNewExpenseNotes] = useState('');
+  const [newExpenseNotes, setNewExpenseNotes] = '';
 
   const [incomes, setIncomes] = useState([]);
   const [newIncomeDesc, setNewIncomeDesc] = useState('');
   const [newIncomeAmount, setNewIncomeAmount] = useState('');
-  const [newIncomeNotes, setNewIncomeNotes] = useState('');
+  const [newIncomeNotes, setNewIncomeNotes] = '';
 
   const [selectedMonth, setSelectedMonth] = useState('');
   const [selectedYear, setSelectedYear] = useState('');
@@ -92,7 +92,7 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
   const filteredTransactions = useMemo(() => {
     let transactions = [
       ...expenses.map(e => ({ ...e, type: 'expense' })),
-      ...incomes.map(i => ({ ...i, i, type: 'income' })) // Fixed typo: removed extra 'i,'
+      ...incomes.map(i => ({ ...i, type: 'income' }))
     ];
 
     if (selectedMonth !== '') {
@@ -529,21 +529,24 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
             <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 gap-4">
               <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-100 mb-2 sm:mb-0">Transaction History</h3>
               {/* Filter and Search section */}
-              <div className="flex flex-col sm:flex-row items-center gap-2 w-full sm:w-auto">
+              {/* Added flex-wrap to this div to ensure elements wrap nicely on very small screens */}
+              <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
                 {/* Search Input */}
                 <input
                   type="text"
                   placeholder="Search transactions..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="p-2 bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 w-full"
+                  // Updated classes for search input
+                  className="p-2 bg-[#2D3748] text-gray-300 placeholder-gray-400 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 w-full flex-1 min-w-[150px]"
                 />
                 {/* Month Filter */}
-                <div className="relative w-full sm:w-auto">
+                <div className="relative w-full sm:w-auto flex-1 min-w-[120px]">
                   <select
                     value={selectedMonth}
                     onChange={(e) => setSelectedMonth(e.target.value)}
-                    className="p-2 pr-8 rounded-lg bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-200 appearance-none w-full"
+                    // Updated classes for select dropdowns
+                    className="p-2 pr-8 rounded-lg bg-[#2D3748] text-gray-300 border border-gray-700 appearance-none w-full"
                   >
                     <option value="">All Months</option>
                     {monthNames.map((month, index) => (
@@ -555,11 +558,12 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
                   </div>
                 </div>
                 {/* Year Filter */}
-                <div className="relative w-full sm:w-auto">
+                <div className="relative w-full sm:w-auto flex-1 min-w-[100px]">
                   <select
                     value={selectedYear}
                     onChange={(e) => setSelectedYear(e.target.value)}
-                    className="p-2 pr-8 rounded-lg bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-200 appearance-none w-full"
+                    // Updated classes for select dropdowns
+                    className="p-2 pr-8 rounded-lg bg-[#2D3748] text-gray-300 border border-gray-700 appearance-none w-full"
                   >
                     <option value="">All Years</option>
                     {availableYears.map(year => (
