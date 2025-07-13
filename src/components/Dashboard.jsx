@@ -37,6 +37,7 @@ const formatMoney = (amount, currencySymbol, numberFormat) => {
 };
 
 // --- Main Component ---
+// MODIFIED: Added appIcon to props
 const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updateAppSettings, appIcon }) => {
   const [isNewUser, setIsNewUser] = useState(false);
   const [editingExpense, setEditingExpense] = useState(null);
@@ -47,10 +48,9 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
   const [newExpenseAmount, setNewExpenseAmount] = useState('');
   const [newExpenseNotes, setNewExpenseNotes] = useState('');
 
-  const [budgetAdjustment, setBudgetAdjustment] = useState(''); // Correctly managed state
+  const [budgetAdjustment, setBudgetAdjustment] = useState('');
 
-  // appTitle is now deconstructed from appSettings
-  const { budget, currency, numberFormat, appTitle } = appSettings;
+  const { budget, currency, numberFormat, appTitle } = appSettings; // appTitle is already deconstructed
 
   const totalExpenses = expenses.reduce((sum, expense) => sum + expense.amount, 0);
   const remainingBudget = budget - totalExpenses;
@@ -145,16 +145,8 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
     if (!settings.budget || settings.budget <= 0) return toast.error("Please enter a valid budget.");
     const userDocRef = doc(db, 'users', user.uid);
     try {
-      // Ensure appTitle and appIcon are saved if they are part of the settings form
-      const settingsToSave = {
-        budget: settings.budget,
-        currency: settings.currency,
-        numberFormat: settings.numberFormat,
-        appTitle: settings.appTitle || appSettings.appTitle, // Use new title or current
-        appIcon: settings.appIcon || appSettings.appIcon,   // Use new icon or current
-      };
-      await setDoc(userDocRef, settingsToSave, { merge: true });
-      updateAppSettings(prev => ({...prev, ...settingsToSave}));
+      await setDoc(userDocRef, settings, { merge: true });
+      updateAppSettings(prev => ({...prev, ...settings}));
       setShowSetupModal(false);
       toast.success("Settings saved!");
     } catch (error) { toast.error("Failed to save settings."); console.error(error); }
@@ -229,7 +221,7 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
     doc.text("Expense Report", 14, 22);
     doc.setFontSize(11);
     doc.setTextColor(100);
-    doc.text(`For: ${appTitle}`, 14, 30); // Uses appTitle from appSettings
+    doc.text(`For: ${appTitle}`, 14, 30);
     doc.text(`Date: ${new Date().toLocaleDateString()}`, 14, 36);
 
     const tableColumn = ["Date", "Description", "Notes", "Amount"];
@@ -282,7 +274,6 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
         onSave={handleSaveSettings}
         onClose={() => setShowSetupModal(false)}
         user={user}
-        // Pass initial appSettings, which now include appTitle and appIcon
         initialSettings={{ ...appSettings, isNewUser }}
       />
       <EditExpenseModal
@@ -301,16 +292,16 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
 
       <div className="max-w-5xl mx-auto p-4 md:p-8">
         <main>
-          {/* --- App Icon and Title Section (Moved from Header) --- */}
+          {/* --- ADDED: App Icon and Title Section --- */}
           <div className="flex items-center gap-4 mb-8 bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md">
             <img
-              src={appIcon} // Uses appIcon passed as a prop
+              src={appIcon}
               alt="App Icon"
               className="w-16 h-16 object-cover bg-gray-700 rounded-lg flex-shrink-0"
             />
             <h1
               className="text-gray-900 dark:text-gray-100 text-3xl font-extrabold leading-tight truncate"
-              title={appTitle} // Uses appTitle from appSettings, truncates if too long
+              title={appTitle}
             >
               {appTitle}
             </h1>
@@ -344,22 +335,19 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
                 <input
                   type="number"
                   value={budgetAdjustment}
-                  onChange={(e) => setBudgetAdjustment(e.target.value)} // Corrected `onChange` handler
+                  onChange={(e) => setBudgetAdjustment(e.target.value)}
                   placeholder="Amount"
-                  // Added `flex-grow`, `min-w-0`, `text-right`, `overflow-x-auto` for better number handling
-                  className="p-2 flex-grow min-w-0 bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-right overflow-x-auto"
+                  className="p-2 w-full sm:w-1/3 bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
                 <button
                   onClick={() => handleUpdateBudget(budgetAdjustment)}
-                  // Added `flex-shrink-0` to prevent buttons from shrinking
-                  className="w-full sm:w-auto px-4 py-2 bg-green-500 text-white font-bold rounded-lg shadow-sm hover:bg-green-600 transition-all flex-shrink-0"
+                  className="w-full sm:w-auto px-4 py-2 bg-green-500 text-white font-bold rounded-lg shadow-sm hover:bg-green-600 transition-all"
                 >
                   Add Budget
                 </button>
                 <button
                   onClick={() => handleUpdateBudget(-budgetAdjustment)}
-                  // Added `flex-shrink-0` to prevent buttons from shrinking
-                  className="w-full sm:w-auto px-4 py-2 bg-red-500 text-white font-bold rounded-lg shadow-sm hover:bg-red-600 transition-all flex-shrink-0"
+                  className="w-full sm:w-auto px-4 py-2 bg-red-500 text-white font-bold rounded-lg shadow-sm hover:bg-red-600 transition-all"
                 >
                   Remove Budget
                 </button>
