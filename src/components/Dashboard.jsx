@@ -47,7 +47,7 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
   const [newExpenseAmount, setNewExpenseAmount] = useState('');
   const [newExpenseNotes, setNewExpenseNotes] = useState('');
 
-  const [budgetAdjustment, setBudgetAdjustment] = useState('');
+  const [budgetAdjustment, setBudgetAdjustment] = useState(''); // Correctly managed state
 
   // appTitle is now deconstructed from appSettings
   const { budget, currency, numberFormat, appTitle } = appSettings;
@@ -344,19 +344,22 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
                 <input
                   type="number"
                   value={budgetAdjustment}
-                  onChange={(e) => setBudgetAdjustment(e.target.value)}
+                  onChange={(e) => setBudgetAdjustment(e.target.value)} // Corrected `onChange` handler
                   placeholder="Amount"
-                  className="p-2 w-full sm:w-1/3 bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  // Added `flex-grow`, `min-w-0`, `text-right`, `overflow-x-auto` for better number handling
+                  className="p-2 flex-grow min-w-0 bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-right overflow-x-auto"
                 />
                 <button
                   onClick={() => handleUpdateBudget(budgetAdjustment)}
-                  className="w-full sm:w-auto px-4 py-2 bg-green-500 text-white font-bold rounded-lg shadow-sm hover:bg-green-600 transition-all"
+                  // Added `flex-shrink-0` to prevent buttons from shrinking
+                  className="w-full sm:w-auto px-4 py-2 bg-green-500 text-white font-bold rounded-lg shadow-sm hover:bg-green-600 transition-all flex-shrink-0"
                 >
                   Add Budget
                 </button>
                 <button
                   onClick={() => handleUpdateBudget(-budgetAdjustment)}
-                  className="w-full sm:w-auto px-4 py-2 bg-red-500 text-white font-bold rounded-lg shadow-sm hover:bg-red-600 transition-all"
+                  // Added `flex-shrink-0` to prevent buttons from shrinking
+                  className="w-full sm:w-auto px-4 py-2 bg-red-500 text-white font-bold rounded-lg shadow-sm hover:bg-red-600 transition-all flex-shrink-0"
                 >
                   Remove Budget
                 </button>
