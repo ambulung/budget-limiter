@@ -83,7 +83,7 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
   const remainingBudget = (budget + totalIncome) - totalExpenses;
   // MODIFIED: remainingProgress calculation toFixed(2)
   const remainingProgress = (budget + totalIncome) > 0
-    ? ((remainingBudget / (budget + totalIncome)) * 100).toFixed(2)
+    ? (((budget + totalIncome) - totalExpenses) / (budget + totalIncome) * 100).toFixed(2)
     : 0; // Keep 0 if total budget is 0 to avoid NaN/Infinity
 
 
@@ -428,45 +428,20 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
               </div>
               {(budget + totalIncome) > 0 && (
                 <span className={`text-xl font-bold ${getTextColorClass()}`}>
-                  {remainingProgress}% {/* MODIFIED: No Math.round(), uses toFixed(2) from calculation */}
+                  {remainingProgress}%
                 </span>
               )}
             </div>
             <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-4 mb-2">
+              {/* This comment was causing the esbuild error. Moved to its own line. */}
               <div
                 className={`h-full rounded-full transition-all duration-500 ${getProgressBarFillColor()}`}
-                style={{ width: `${Math.max(0, parseFloat(remainingProgress))}%` }} {/* MODIFIED: parseFloat for style */}
+                style={{ width: `${Math.max(0, parseFloat(remainingProgress))}%` }}
               ></div>
             </div>
             <p className={`text-right font-medium ${getTextColorClass()} mb-6`}>
               {formatMoney(remainingBudget, currency, numberFormat)} Remaining
             </p>
-
-            {/* REMOVED: Adjust Budget Section */}
-            {/* <div className="border-t dark:border-gray-700 pt-4">
-              <h4 className="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-2">Adjust Budget</h4>
-              <div className="flex flex-col sm:flex-row items-center gap-2">
-                <input
-                  type="number"
-                  value={budgetAdjustment}
-                  onChange={(e) => setBudgetAdjustment(e.target.value)}
-                  placeholder="Amount"
-                  className="p-2 w-full sm:w-1/3 bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-                <button
-                  onClick={() => handleUpdateBudget(budgetAdjustment)}
-                  className="w-full sm:w-auto px-4 py-2 bg-green-500 text-white font-bold rounded-lg shadow-sm hover:bg-green-600 transition-all"
-                >
-                  Add Budget
-                </button>
-                <button
-                  onClick={() => handleUpdateBudget(-budgetAdjustment)}
-                  className="w-full sm:w-auto px-4 py-2 bg-red-500 text-white font-bold rounded-lg shadow-sm hover:bg-red-600 transition-all"
-                >
-                  Remove Budget
-                </button>
-              </div>
-            </div> */}
           </div>
 
           {/* --- Forms: Income on Left, Expense on Right --- */}
