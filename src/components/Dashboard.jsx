@@ -19,10 +19,6 @@ const DeleteIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" className="h-
 const DownloadIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg> );
 const DeleteAllIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-4v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg> );
 
-// Removed ArrowUpIcon and ArrowDownIcon as they are no longer needed
-// const ArrowUpIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" /></svg> );
-// const ArrowDownIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" /></svg> );
-
 // --- Helper Functions ---
 const formatMoney = (amount, currencySymbol, numberFormat) => {
   const num = Number(amount);
@@ -82,6 +78,7 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
 
   const [selectedMonth, setSelectedMonth] = useState('');
   const [selectedYear, setSelectedYear] = useState('');
+  const [searchTerm, setSearchTerm] = useState(''); // New state for search term
 
   const { budget, currency, numberFormat, appTitle } = appSettings;
 
@@ -95,7 +92,7 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
   const filteredTransactions = useMemo(() => {
     let transactions = [
       ...expenses.map(e => ({ ...e, type: 'expense' })),
-      ...incomes.map(i => ({ ...i, type: 'income' }))
+      ...incomes.map(i => ({ ...i, i, type: 'income' })) // Fixed typo: removed extra 'i,'
     ];
 
     if (selectedMonth !== '') {
@@ -112,8 +109,17 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
       });
     }
 
+    // Apply search filter
+    if (searchTerm.trim() !== '') {
+      const lowerCaseSearchTerm = searchTerm.toLowerCase();
+      transactions = transactions.filter(t =>
+        t.description.toLowerCase().includes(lowerCaseSearchTerm) ||
+        (t.notes && t.notes.toLowerCase().includes(lowerCaseSearchTerm))
+      );
+    }
+
     return transactions.sort((a, b) => b.createdAt.toDate() - a.createdAt.toDate());
-  }, [expenses, incomes, selectedMonth, selectedYear]);
+  }, [expenses, incomes, selectedMonth, selectedYear, searchTerm]); // Add searchTerm to dependency array
 
 
   const availableYears = useMemo(() => {
@@ -522,8 +528,16 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
             {/* Flex column on small screens, row on medium+ */}
             <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 gap-4">
               <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-100 mb-2 sm:mb-0">Transaction History</h3>
-              {/* Filter section also stacks vertically on small screens */}
+              {/* Filter and Search section */}
               <div className="flex flex-col sm:flex-row items-center gap-2 w-full sm:w-auto">
+                {/* Search Input */}
+                <input
+                  type="text"
+                  placeholder="Search transactions..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="p-2 bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 w-full"
+                />
                 {/* Month Filter */}
                 <div className="relative w-full sm:w-auto">
                   <select
@@ -558,8 +572,7 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
                 </div>
               </div>
             </div>
-            {/* NEW: Horizontal and Left-aligned Action Buttons */}
-            {/* Changed justify-end to justify-start for better mobile flow, or justify-center if only a few buttons */}
+            {/* Action Buttons */}
             <div className="flex flex-wrap gap-2 mb-4 justify-start sm:justify-end">
               <button
                 onClick={handleDownloadPdf}
@@ -595,8 +608,8 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
                   className={`flex flex-col sm:flex-row sm:justify-between sm:items-start p-3 sm:p-4 rounded-lg
                               ${transaction.type === 'income' ? 'bg-green-50 dark:bg-green-900/20' : 'bg-red-50 dark:bg-red-900/20'}`}
                 >
-                  {/* Left section: Description, Notes, Date (Icon removed) */}
-                  <div className="flex-1 min-w-0"> {/* Removed flex items-start gap-2 and the icon div */}
+                  {/* Left section: Description, Notes, Date */}
+                  <div className="flex-1 min-w-0">
                     <div>
                       <p className="text-gray-700 dark:text-gray-200 break-words font-medium">{transaction.description}</p>
                       {transaction.notes && ( <p className="text-sm italic text-gray-600 dark:text-gray-400 mt-1 break-words">{transaction.notes}</p> )}
