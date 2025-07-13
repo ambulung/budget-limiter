@@ -12,7 +12,7 @@ const SetupModal = ({ isOpen, onSave, onClose, user, initialSettings }) => {
   const [isUploading, setIsUploading] = useState(false);
   const [numberFormat, setNumberFormat] = useState('comma');
 
-  // --- MODIFIED: Split budget state into raw number and display string ---
+  // Split budget state into raw number and display string
   const [rawBudget, setRawBudget] = useState(1000);
   const [displayBudget, setDisplayBudget] = useState('1000.00');
 
@@ -22,9 +22,8 @@ const SetupModal = ({ isOpen, onSave, onClose, user, initialSettings }) => {
       const initialBudgetValue = initialSettings.budget || 1000;
       
       setTitle(initialSettings.appTitle || '');
-      // --- MODIFIED: Set both budget states on open ---
       setRawBudget(initialBudgetValue);
-      setDisplayBudget(Number(initialBudgetValue).toFixed(2)); // Ensure it's formatted initially
+      setDisplayBudget(Number(initialBudgetValue).toFixed(2));
       
       setCurrentIconUrl(initialSettings.appIcon || '');
       setNumberFormat(initialSettings.numberFormat || 'comma');
@@ -41,18 +40,14 @@ const SetupModal = ({ isOpen, onSave, onClose, user, initialSettings }) => {
     }
   }, [isOpen, initialSettings]);
   
-  // --- NEW: Handlers for the budget input field ---
+  // Handlers for the budget input field
   const handleBudgetChange = (e) => {
-    // Allow user to type freely by updating the display string directly
     setDisplayBudget(e.target.value);
-    
-    // Also update the raw numeric value for calculations/saving
     const parsedValue = parseFloat(e.target.value);
     setRawBudget(isNaN(parsedValue) ? 0 : parsedValue);
   };
 
   const handleBudgetBlur = () => {
-    // When the user clicks away, format the raw value to two decimal places
     setDisplayBudget(rawBudget.toFixed(2));
   };
 
@@ -93,7 +88,6 @@ const SetupModal = ({ isOpen, onSave, onClose, user, initialSettings }) => {
 
     onSave({
       appTitle: title,
-      // --- MODIFIED: Use the clean, raw numeric value for saving ---
       budget: rawBudget, 
       currency: finalCurrency,
       appIcon: currentIconUrl,
@@ -127,18 +121,9 @@ const SetupModal = ({ isOpen, onSave, onClose, user, initialSettings }) => {
           <div className="flex gap-4">
             <div className="flex-grow">
               <label className="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Your Budget</label>
-              {/* --- MODIFIED: Budget Input now uses the new state and handlers --- */}
-              <input 
-                type="text" 
-                inputMode="decimal"
-                value={displayBudget} 
-                onChange={handleBudgetChange}
-                onBlur={handleBudgetBlur}
-                className="w-full p-3 bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" 
-              />
+              <input type="text" inputMode="decimal" value={displayBudget} onChange={handleBudgetChange} onBlur={handleBudgetBlur} className="w-full p-3 bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
             </div>
             <div className="w-1/3">
-              {/* ... (rest of the currency dropdown is unchanged) ... */}
               <label className="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Currency</label>
               <div className="relative">
                 <select value={currency} onChange={(e) => setCurrency(e.target.value)} className="w-full p-3 h-full bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none">
@@ -156,12 +141,27 @@ const SetupModal = ({ isOpen, onSave, onClose, user, initialSettings }) => {
             </div>
           </div>
           
+          {/* --- FIX: Restored the actual JSX for the custom currency input --- */}
           {currency === 'custom' && (
-             {/* ... (rest of the form is unchanged) ... */}
+            <div>
+              <label className="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Custom Currency Symbol</label>
+              <input type="text" value={customCurrencySymbol} onChange={(e) => setCustomCurrencySymbol(e.target.value)} placeholder="e.g., CHF" maxLength="5" className="w-full p-3 bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required />
+            </div>
           )}
 
+          {/* --- FIX: Restored the actual JSX for the number formatting dropdown --- */}
           <div>
-             {/* ... (rest of the form is unchanged) ... */}
+            <label className="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Number Formatting</label>
+            <div className="relative">
+                <select value={numberFormat} onChange={(e) => setNumberFormat(e.target.value)} className="w-full p-3 h-full bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none">
+                  <option value="comma">Comma separator (1,000.00)</option>
+                  <option value="dot">Dot separator (1.000,00)</option>
+                  <option value="none">No separator (1000.00)</option>
+                </select>
+                <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
+                  <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+                </div>
+              </div>
           </div>
 
           <button type="submit" className="p-3 w-full bg-blue-600 text-white font-bold rounded-lg shadow-md hover:bg-blue-700 transition-all" disabled={isUploading}>
