@@ -9,19 +9,20 @@ const Header = ({ appTitle, appIcon, onOpenSettings, onLogout }) => {
   return (
     <header className="bg-[#1C2135] dark:bg-gray-900 shadow-md sticky top-0 z-40">
       <nav className="max-w-5xl mx-auto px-4 md:px-8">
-        {/* --- MODIFIED: Changed h-16 to min-h-16 and added py-2 for padding --- */}
-        {/* This allows the header to grow in height if the title wraps. */}
-        <div className="flex items-center justify-between min-h-16 py-2">
-          {/* --- This container is still key for the layout --- */}
-          {/* It shrinks, forcing the h1 inside to wrap its text. */}
+        <div className="flex items-center justify-between h-16">
+          {/* --- MODIFIED: Added `shrink` and `min-w-0` to the container --- */}
+          {/* This allows the container to shrink below its content's natural width. */}
           <div className="flex items-center gap-3 shrink min-w-0">
             <img 
               src={appIcon} 
               alt="App Icon" 
               className="w-10 h-10 object-cover bg-gray-700 rounded-md flex-shrink-0" 
             />
-            {/* --- MODIFIED: Removed `truncate` to allow text wrapping --- */}
-            <h1 className="text-white text-xl font-bold">
+            {/* --- MODIFIED: Added `truncate` to the title and a `title` attribute for accessibility --- */}
+            <h1 
+              className="text-white text-xl font-bold truncate"
+              title={appTitle} // Shows the full title on hover
+            >
               {appTitle}
             </h1>
           </div>
