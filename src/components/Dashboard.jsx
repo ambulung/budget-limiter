@@ -318,39 +318,27 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
             {appTitle}
           </h1>
 
-          {/* --- MODIFIED: Budget Status Display with Percentage on Bar --- */}
+          {/* --- MODIFIED: Budget Status Display with Percentage ABOVE Bar --- */}
           <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md mb-8">
             <div className="flex justify-between items-center mb-2">
+              {/* Left side: Spent / Budget */}
               <div className={`text-2xl font-bold ${getTextColorClass()}`}>
                 {formatMoney(totalExpenses, currency, numberFormat)}
                 <span className="text-gray-400 dark:text-gray-500 text-lg"> / {formatMoney(budget, currency, numberFormat)}</span>
               </div>
+              {/* Right side: Percentage */}
+              {budget > 0 && ( // Only show percentage if budget is set
+                <span className={`text-xl font-bold ${getTextColorClass()}`}>
+                  {Math.round(remainingProgress)}%
+                </span>
+              )}
             </div>
-            {/* Progress bar container with relative positioning */}
-            <div className="relative w-full bg-gray-200 dark:bg-gray-700 rounded-full h-4 mb-2">
+            {/* Progress bar (no percentage text inside) */}
+            <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-4 mb-2">
               <div
                 className={`h-full rounded-full transition-all duration-500 ${getProgressBarFillColor()}`}
                 style={{ width: `${Math.max(0, remainingProgress)}%` }}
               ></div>
-              {/* Percentage Text overlay */}
-              {budget > 0 && ( // Only show percentage if budget is set
-                <span
-                  className={`absolute right-2 top-1/2 -translate-y-1/2 text-xs font-semibold ${getTextColorClass()} ${remainingProgress < 5 && 'opacity-0'}`} // Hide if too small
-                  style={{
-                    // Position dynamically based on progress, but clamp to avoid going off bar
-                    left: `calc(${Math.max(0, remainingProgress)}% - 40px)`, // Adjust 40px for text width
-                    minWidth: '40px', // Ensure text has enough space
-                    textAlign: 'right',
-                    // If progress is very low, make text appear on the right side of the bar
-                    // This is a stylistic choice, adjust as needed
-                    transform: remainingProgress > 95 ? 'translateX(0)' : `translateX(${Math.max(0, remainingProgress - 100)}%)`,
-                    // Ensure text is visible over dark backgrounds if using light text colors, etc.
-                    textShadow: '1px 1px 2px rgba(0,0,0,0.3)', // Subtle shadow for contrast
-                  }}
-                >
-                  {Math.round(remainingProgress)}%
-                </span>
-              )}
             </div>
             {/* Text showing remaining budget with dynamic color */}
             <p className={`text-right font-medium ${getTextColorClass()} mb-6`}>
