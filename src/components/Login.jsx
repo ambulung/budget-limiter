@@ -123,7 +123,7 @@ const Login = () => {
     <div className="flex flex-col items-center justify-center min-h-screen bg-slate-100 dark:bg-gray-900 p-4">
       
       {/* --- MOVED AND STYLED: BRANDING HEADER --- */}
-      <h2 className="text-3xl font-bold text-center text-white tracking-widest mb-6">
+      <h2 className="text-white text-3xl font-extrabold tracking-wide mb-6">
         BUDGET<span className="text-blue-400">.</span>LIMIT
       </h2>
       
