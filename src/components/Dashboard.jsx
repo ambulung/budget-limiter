@@ -40,18 +40,20 @@ const formatMoney = (amount, currencySymbol, numberFormat) => {
   }
 };
 
-// NEW: Helper function to format date and time consistently
+// MODIFIED: Helper function to format date and time consistently with explicit colons
 const formatDateTime = (timestamp) => {
   if (!timestamp) return '';
   const date = timestamp.toDate(); // Convert Firebase Timestamp to Date object
 
   // Options for toLocaleDateString: always show day, month, year
-  const dateOptions = { day: '2-digit', month: '2-digit', year: 'numeric' };
-  // Options for toLocaleTimeString: always show hour, minute, second, with 24-hour format
-  const timeOptions = { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false };
+  // Using 'en-GB' locale often gives DD/MM/YYYY format
+  const formattedDate = date.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
 
-  const formattedDate = date.toLocaleDateString(undefined, dateOptions); // `undefined` uses user's locale
-  const formattedTime = date.toLocaleTimeString(undefined, timeOptions);
+  // Manually format time to ensure colons
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  const seconds = String(date.getSeconds()).padStart(2, '0');
+  const formattedTime = `${hours}:${minutes}:${seconds}`;
 
   return `${formattedDate}, ${formattedTime}`;
 };
@@ -594,7 +596,6 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
                     <div>
                       <p className="text-gray-700 dark:text-gray-200 break-words">{transaction.description}</p>
                       {transaction.notes && ( <p className="text-sm italic text-gray-600 dark:text-gray-400 mt-1 break-words">{transaction.notes}</p> )}
-                      {/* MODIFIED: Use new formatDateTime helper */}
                       {transaction.createdAt && ( <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{formatDateTime(transaction.createdAt)}</p> )}
                     </div>
                   </div>
