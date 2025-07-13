@@ -1,15 +1,18 @@
+// src/components/SetupModal.jsx
+
 import React, { useState, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
-import { storage } from '../firebase';
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+// REMOVED: import { storage } from '../firebase';
+// REMOVED: import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
 const SetupModal = ({ isOpen, onSave, onClose, user, initialSettings }) => {
   // State for form inputs
   const [title, setTitle] = useState('');
   const [currency, setCurrency] = useState('$');
   const [customCurrencySymbol, setCustomCurrencySymbol] = useState('');
-  const [currentIconUrl, setCurrentIconUrl] = useState('');
-  const [isUploading, setIsUploading] = useState(false);
+  // REMOVED: selectedFile state
+  // REMOVED: displayIconUrl state
+  // REMOVED: isUploading state
   const [numberFormat, setNumberFormat] = useState('comma');
 
   // Split budget state into raw number and display string
@@ -20,12 +23,13 @@ const SetupModal = ({ isOpen, onSave, onClose, user, initialSettings }) => {
   useEffect(() => {
     if (isOpen) {
       const initialBudgetValue = initialSettings.budget || 1000;
-      
-      setTitle(initialSettings.appTitle || '');
+
+      setTitle(initialSettings.appTitle || ''); // Still use appTitle
       setRawBudget(initialBudgetValue);
       setDisplayBudget(Number(initialBudgetValue).toFixed(2));
-      
-      setCurrentIconUrl(initialSettings.appIcon || '');
+
+      // REMOVED: displayIconUrl initialization
+
       setNumberFormat(initialSettings.numberFormat || 'comma');
 
       const standardCurrencies = ['$', '€', '£', '¥', '₹'];
@@ -39,7 +43,7 @@ const SetupModal = ({ isOpen, onSave, onClose, user, initialSettings }) => {
       }
     }
   }, [isOpen, initialSettings]);
-  
+
   // Handlers for the budget input field
   const handleBudgetChange = (e) => {
     setDisplayBudget(e.target.value);
@@ -51,32 +55,12 @@ const SetupModal = ({ isOpen, onSave, onClose, user, initialSettings }) => {
     setDisplayBudget(rawBudget.toFixed(2));
   };
 
+  // REMOVED: handleFileSelect function
+  // REMOVED: uploadIconToFirebase function
 
-  const handleIconUpload = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    if (!file.type.startsWith('image/')) return toast.error("Please select an image file.");
-
-    setIsUploading(true);
-    const uploadToast = toast.loading("Uploading icon...");
-    const storageRef = ref(storage, `icons/${user.uid}/profile`);
-
-    try {
-      await uploadBytes(storageRef, file);
-      const downloadURL = await getDownloadURL(storageRef);
-      setCurrentIconUrl(downloadURL);
-      toast.success("Icon updated! Click 'Save' to apply.", { id: uploadToast });
-    } catch (error) {
-      toast.error("Failed to upload icon.", { id: uploadToast });
-      console.error("Upload error:", error);
-    } finally {
-      setIsUploading(false);
-    }
-  };
-
-  const handleSave = (e) => {
+  const handleSave = async (e) => { // Still async, though no longer waiting for upload
     e.preventDefault();
-    
+
     let finalCurrency = currency;
     if (currency === 'custom') {
       if (!customCurrencySymbol.trim()) {
@@ -86,11 +70,19 @@ const SetupModal = ({ isOpen, onSave, onClose, user, initialSettings }) => {
       finalCurrency = customCurrencySymbol.trim();
     }
 
+    // REMOVED: Image upload logic
+    // REMOVED: finalAppIconUrl variable
+
+    if (rawBudget <= 0) {
+      toast.error("Budget must be a positive number.");
+      return;
+    }
+
+    // MODIFIED: Do NOT include appIcon in the saved settings
     onSave({
       appTitle: title,
-      budget: rawBudget, 
+      budget: rawBudget,
       currency: finalCurrency,
-      appIcon: currentIconUrl,
       numberFormat: numberFormat,
     });
   };
@@ -114,16 +106,15 @@ const SetupModal = ({ isOpen, onSave, onClose, user, initialSettings }) => {
             <label className="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">App Title</label>
             <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} className="w-full p-3 bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
           </div>
+
+          {/* --- REMOVED: Icon Upload Section --- */}
+
           <div>
-            <label className="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Upload Icon</label>
-            <input type="file" onChange={handleIconUpload} accept="image/png, image/jpeg, image/gif" disabled={isUploading} className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 dark:file:bg-gray-700 dark:file:text-gray-200 dark:hover:file:bg-gray-600 cursor-pointer" />
+            <label className="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Your Budget</label>
+            <input type="text" inputMode="decimal" value={displayBudget} onChange={handleBudgetChange} onBlur={handleBudgetBlur} className="w-full p-3 bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
           </div>
           <div className="flex gap-4">
             <div className="flex-grow">
-              <label className="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Your Budget</label>
-              <input type="text" inputMode="decimal" value={displayBudget} onChange={handleBudgetChange} onBlur={handleBudgetBlur} className="w-full p-3 bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
-            </div>
-            <div className="w-1/3">
               <label className="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Currency</label>
               <div className="relative">
                 <select value={currency} onChange={(e) => setCurrency(e.target.value)} className="w-full p-3 h-full bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none">
@@ -140,8 +131,7 @@ const SetupModal = ({ isOpen, onSave, onClose, user, initialSettings }) => {
               </div>
             </div>
           </div>
-          
-          {/* --- FIX: Restored the actual JSX for the custom currency input --- */}
+
           {currency === 'custom' && (
             <div>
               <label className="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Custom Currency Symbol</label>
@@ -149,7 +139,6 @@ const SetupModal = ({ isOpen, onSave, onClose, user, initialSettings }) => {
             </div>
           )}
 
-          {/* --- FIX: Restored the actual JSX for the number formatting dropdown --- */}
           <div>
             <label className="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Number Formatting</label>
             <div className="relative">
@@ -164,8 +153,8 @@ const SetupModal = ({ isOpen, onSave, onClose, user, initialSettings }) => {
               </div>
           </div>
 
-          <button type="submit" className="p-3 w-full bg-blue-600 text-white font-bold rounded-lg shadow-md hover:bg-blue-700 transition-all" disabled={isUploading}>
-            {isUploading ? "Uploading..." : "Save and Continue"}
+          <button type="submit" className="p-3 w-full bg-blue-600 text-white font-bold rounded-lg shadow-md hover:bg-blue-700 transition-all" >
+            Save and Continue
           </button>
         </form>
       </div>

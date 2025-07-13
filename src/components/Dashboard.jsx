@@ -37,8 +37,8 @@ const formatMoney = (amount, currencySymbol, numberFormat) => {
 };
 
 // --- Main Component ---
-// MODIFIED: Added appIcon to props
-const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updateAppSettings, appIcon }) => {
+// MODIFIED: Removed appIcon from props
+const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updateAppSettings }) => {
   const [isNewUser, setIsNewUser] = useState(false);
   const [editingExpense, setEditingExpense] = useState(null);
   const [showConfirmDeleteAllModal, setShowConfirmDeleteAllModal] = useState(false);
@@ -46,11 +46,12 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
   const [expenses, setExpenses] = useState([]);
   const [newExpenseDesc, setNewExpenseDesc] = useState('');
   const [newExpenseAmount, setNewExpenseAmount] = useState('');
-  const [newExpenseNotes, setNewExpenseNotes] = useState('');
+  const [newExpenseNotes, setNewExpenseNotes] = '';
 
   const [budgetAdjustment, setBudgetAdjustment] = useState('');
 
-  const { budget, currency, numberFormat, appTitle } = appSettings; // appTitle is already deconstructed
+  // appTitle is still destructured from appSettings as it's used in PDF export
+  const { budget, currency, numberFormat, appTitle } = appSettings;
 
   const totalExpenses = expenses.reduce((sum, expense) => sum + expense.amount, 0);
   const remainingBudget = budget - totalExpenses;
@@ -145,8 +146,10 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
     if (!settings.budget || settings.budget <= 0) return toast.error("Please enter a valid budget.");
     const userDocRef = doc(db, 'users', user.uid);
     try {
-      await setDoc(userDocRef, settings, { merge: true });
-      updateAppSettings(prev => ({...prev, ...settings}));
+      // MODIFIED: Ensure appIcon is NOT saved to Firestore here
+      const { appIcon, ...settingsToSave } = settings; // Destructure to exclude appIcon
+      await setDoc(userDocRef, settingsToSave, { merge: true });
+      updateAppSettings(prev => ({...prev, ...settings})); // Update parent state with all settings (including appTitle for display)
       setShowSetupModal(false);
       toast.success("Settings saved!");
     } catch (error) { toast.error("Failed to save settings."); console.error(error); }
@@ -221,7 +224,7 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
     doc.text("Expense Report", 14, 22);
     doc.setFontSize(11);
     doc.setTextColor(100);
-    doc.text(`For: ${appTitle}`, 14, 30);
+    doc.text(`For: ${appTitle}`, 14, 30); // appTitle is still used here
     doc.text(`Date: ${new Date().toLocaleDateString()}`, 14, 36);
 
     const tableColumn = ["Date", "Description", "Notes", "Amount"];
@@ -292,20 +295,14 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
 
       <div className="max-w-5xl mx-auto p-4 md:p-8">
         <main>
-          {/* --- ADDED: App Icon and Title Section --- */}
-          <div className="flex items-center gap-4 mb-8 bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md">
-            <img
-              src={appIcon}
-              alt="App Icon"
-              className="w-16 h-16 object-cover bg-gray-700 rounded-lg flex-shrink-0"
-            />
-            <h1
-              className="text-gray-900 dark:text-gray-100 text-3xl font-extrabold leading-tight truncate"
-              title={appTitle}
-            >
-              {appTitle}
-            </h1>
-          </div>
+          {/* --- REMOVED: App Icon and Title Section --- */}
+          {/* The app title is now managed by the SetupModal and passed via appSettings */}
+          <h1
+            className="text-gray-900 dark:text-gray-100 text-3xl font-extrabold leading-tight truncate mb-8"
+            title={appTitle}
+          >
+            {appTitle}
+          </h1>
 
           {/* --- BUDGET STATUS AND CONTROLS SECTION --- */}
           <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md mb-8">

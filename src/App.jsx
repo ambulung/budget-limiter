@@ -13,9 +13,7 @@ import Login from './components/Login';
 import Footer from './components/Footer';
 import ConfirmationModal from './components/ConfirmationModal';
 
-// ADDED: Default icon URL. Make sure this path is correct for your project.
-// You might want to place a default image in your `public` folder or `src/assets`.
-const DEFAULT_ICON_URL = '/default-app-icon.jpg'; // Example path, adjust as needed
+// REMOVED: DEFAULT_ICON_URL constant
 
 function App() {
   const [user, setUser] = useState(null);
@@ -23,29 +21,27 @@ function App() {
   const [showSetupModal, setShowSetupModal] = useState(false);
   const [showConfirmEndSessionModal, setShowConfirmEndSessionModal] = useState(false);
 
-  // MODIFIED: Re-added appTitle to initial state for clarity, and added appIcon.
-  // appIcon will be updated from fetched data or use a default.
+  // MODIFIED: appSettings state no longer includes appIcon
   const [appSettings, setAppSettings] = useState({
     budget: 1000,
     currency: '$',
     numberFormat: 'comma',
     appTitle: 'My Expense Tracker', // Default title
-    appIcon: DEFAULT_ICON_URL, // Default icon
+    // REMOVED: appIcon property
   });
 
-  // Effect to listen for authentication state changes (no changes needed here)
+  // Effect to listen for authentication state changes
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
       if (!currentUser) {
         setLoading(false);
-        // MODIFIED: Reset appSettings to initial defaults on logout
+        // MODIFIED: Reset appSettings to initial defaults without appIcon
         setAppSettings({
           budget: 1000,
           currency: '$',
           numberFormat: 'comma',
           appTitle: 'My Expense Tracker',
-          appIcon: DEFAULT_ICON_URL,
         });
       }
     });
@@ -55,7 +51,6 @@ function App() {
   // Effect to fetch user-specific settings from Firestore
   useEffect(() => {
     if (!user) {
-      // Already handled in onAuthStateChanged for logout case, but good to have a safeguard
       return;
     };
 
@@ -65,25 +60,21 @@ function App() {
         const docSnap = await getDoc(userDocRef);
         if (docSnap.exists()) {
           const userData = docSnap.data();
-          // MODIFIED: Update all relevant settings including appTitle and appIcon
+          // MODIFIED: Update all relevant settings, but do NOT expect appIcon from Firestore
           setAppSettings({
             budget: userData.budget || 1000,
             currency: userData.currency || '$',
             numberFormat: userData.numberFormat || 'comma',
             appTitle: userData.appTitle || 'My Expense Tracker', // Fetch title
-            appIcon: userData.appIcon || DEFAULT_ICON_URL, // Fetch icon URL
+            // REMOVED: appIcon property from userData
           });
-          // If this is a new user setup, the modal will be handled by Dashboard's useEffect
         } else {
-          // If doc doesn't exist, it's a new user or data was somehow lost.
-          // Reset to defaults and potentially show setup modal.
-          // The Dashboard's useEffect will handle `setShowSetupModal(true)` for new users.
+          // If doc doesn't exist, reset to defaults without appIcon
           setAppSettings({
             budget: 1000,
             currency: '$',
             numberFormat: 'comma',
             appTitle: 'My Expense Tracker',
-            appIcon: DEFAULT_ICON_URL,
           });
         }
       } catch (error) {
@@ -95,9 +86,9 @@ function App() {
     };
 
     fetchData();
-  }, [user]); // Depend on user to refetch settings when user changes
+  }, [user]);
 
-  // Logout and session handling logic (no changes needed here)
+  // Logout and session handling logic
   const handleLogout = () => {
     if (auth.currentUser && auth.currentUser.isAnonymous) {
       setShowConfirmEndSessionModal(true);
@@ -122,7 +113,7 @@ function App() {
     }
   };
 
-  // Loading screen (no changes needed here)
+  // Loading screen
   if (loading) {
     return (
       <div className="flex justify-center items-center h-screen bg-slate-100 dark:bg-gray-900">
@@ -145,7 +136,6 @@ function App() {
       />
 
       {user && (
-        // Header no longer needs appTitle or appIcon props.
         <Header
           onLogout={handleLogout}
           onOpenSettings={() => setShowSetupModal(true)}
@@ -158,9 +148,9 @@ function App() {
             user={user}
             showSetupModal={showSetupModal}
             setShowSetupModal={setShowSetupModal}
-            appSettings={appSettings} // appSettings now includes appTitle
+            appSettings={appSettings} // appSettings no longer includes appIcon
             updateAppSettings={setAppSettings}
-            appIcon={appSettings.appIcon} // Pass appIcon from appSettings
+            // REMOVED: appIcon prop
           />
         ) : (
           <Login />
