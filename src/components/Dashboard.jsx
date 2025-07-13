@@ -442,7 +442,8 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
         confirmButtonText={`Yes, Delete All ${confirmDeleteAllType === 'expenses' ? 'Expenses' : 'Incomes'}`}
       />
 
-      <div className="max-w-5xl mx-auto p-4 md:p-8">
+      {/* Increased horizontal padding for mobile */}
+      <div className="max-w-5xl mx-auto p-4 md:p-8 sm:px-6 px-4">
         <main>
           <h1
             className="text-gray-900 dark:text-gray-100 text-3xl font-extrabold leading-tight truncate mb-8"
@@ -454,8 +455,9 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
           <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md mb-8">
             <div className="flex justify-between items-center mb-2">
               <div className={`text-2xl font-bold ${getTextColorClass()}`}>
-                {formatMoney(totalExpenses, currency, numberFormat)}
-                <span className="text-gray-400 dark:text-gray-500 text-lg"> / {formatMoney(budget + totalIncome, currency, numberFormat)}</span>
+                {/* Adjusted font size for better mobile fit */}
+                <span className="text-xl sm:text-2xl">{formatMoney(totalExpenses, currency, numberFormat)}</span>
+                <span className="text-gray-400 dark:text-gray-500 text-base sm:text-lg"> / {formatMoney(budget + totalIncome, currency, numberFormat)}</span>
               </div>
               {(budget + totalIncome) > 0 && (
                 <span className={`text-xl font-bold ${getTextColorClass()}`}>
@@ -475,6 +477,7 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
           </div>
 
           {/* --- Forms: Income on Left, Expense on Right --- */}
+          {/* md:grid-cols-2 ensures stacking on mobile already */}
           <div className="grid md:grid-cols-2 gap-8 mb-8">
             {/* --- Add New Income Form --- */}
             <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md">
@@ -489,7 +492,8 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
                   rows="3"
                   className="p-3 bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
-                <button type="submit" className="p-3 bg-green-600 text-white font-bold rounded-lg shadow-md hover:bg-green-700 transition-all">Add Income</button>
+                {/* Increased button padding for touch target */}
+                <button type="submit" className="p-3 sm:p-4 bg-green-600 text-white font-bold rounded-lg shadow-md hover:bg-green-700 transition-all">Add Income</button>
               </form>
             </div>
 
@@ -506,15 +510,18 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
                   rows="3"
                   className="p-3 bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
-                <button type="submit" className="p-3 bg-red-600 text-white font-bold rounded-lg shadow-md hover:bg-red-700 transition-all">Add Expense</button>
+                {/* Increased button padding for touch target */}
+                <button type="submit" className="p-3 sm:p-4 bg-red-600 text-white font-bold rounded-lg shadow-md hover:bg-red-700 transition-all">Add Expense</button>
               </form>
             </div>
           </div>
 
           {/* --- Consolidated Transactions List --- */}
           <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md">
+            {/* Flex column on small screens, row on medium+ */}
             <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 gap-4">
               <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-100 mb-2 sm:mb-0">Transaction History</h3>
+              {/* Filter section also stacks vertically on small screens */}
               <div className="flex flex-col sm:flex-row items-center gap-2 w-full sm:w-auto">
                 {/* Month Filter */}
                 <div className="relative w-full sm:w-auto">
@@ -551,7 +558,8 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
               </div>
             </div>
             {/* NEW: Horizontal and Left-aligned Action Buttons */}
-            <div className="flex flex-wrap gap-2 mb-4 justify-end"> {/* flex-wrap for small screens, justify-start for left-align */}
+            {/* Changed justify-end to justify-start for better mobile flow, or justify-center if only a few buttons */}
+            <div className="flex flex-wrap gap-2 mb-4 justify-start sm:justify-end">
               <button
                 onClick={handleDownloadPdf}
                 className="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors flex-shrink-0"
@@ -574,44 +582,50 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
                 <DeleteAllIcon />
               </button>
             </div>
-            <div className="flex justify-between text-lg font-semibold mb-3">
-              <span className="text-green-600 dark:text-green-400">Total Income: {formatMoney(totalIncome, currency, numberFormat)}</span>
-              <span className="text-red-600 dark:text-red-400">Total Expenses: {formatMoney(totalExpenses, currency, numberFormat)}</span>
+            <div className="flex flex-col sm:flex-row justify-between text-lg font-semibold mb-3 gap-2"> {/* Stacks totals on mobile */}
+              <span className="text-green-600 dark:text-green-400 text-base sm:text-lg">Total Income: {formatMoney(totalIncome, currency, numberFormat)}</span>
+              <span className="text-red-600 dark:text-red-400 text-base sm:text-lg">Total Expenses: {formatMoney(totalExpenses, currency, numberFormat)}</span>
             </div>
             <ul className="space-y-3 h-[400px] overflow-y-auto pr-2">
               {filteredTransactions.length === 0 && <p className="text-gray-500 dark:text-gray-400">No transactions match the selected filters.</p>}
               {filteredTransactions.map(transaction => (
                 <li
                   key={transaction.id}
-                  className={`flex justify-between items-start p-3 rounded-lg
+                  className={`flex flex-col sm:flex-row sm:justify-between sm:items-start p-3 sm:p-4 rounded-lg
                               ${transaction.type === 'income' ? 'bg-green-50 dark:bg-green-900/20' : 'bg-red-50 dark:bg-red-900/20'}`}
                 >
-                  <div className="flex-1 min-w-0 flex items-center gap-2">
-                    {transaction.type === 'income' ? <ArrowUpIcon /> : <ArrowDownIcon />}
+                  {/* Left section: Icon, Description, Notes, Date */}
+                  <div className="flex-1 min-w-0 flex items-start gap-2 mb-2 sm:mb-0"> {/* Adjusted items-start */}
+                    <div className="flex-shrink-0 mt-1"> {/* Align icon better with text */}
+                      {transaction.type === 'income' ? <ArrowUpIcon /> : <ArrowDownIcon />}
+                    </div>
                     <div>
-                      <p className="text-gray-700 dark:text-gray-200 break-words">{transaction.description}</p>
+                      <p className="text-gray-700 dark:text-gray-200 break-words font-medium">{transaction.description}</p>
                       {transaction.notes && ( <p className="text-sm italic text-gray-600 dark:text-gray-400 mt-1 break-words">{transaction.notes}</p> )}
                       {transaction.createdAt && ( <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{formatDateTime(transaction.createdAt)}</p> )}
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 ml-4 shrink-0">
-                    <span className={`font-bold ${transaction.type === 'income' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                  {/* Right section: Amount and Action Buttons */}
+                  <div className="flex flex-row sm:flex-col items-center sm:items-end gap-2 ml-0 sm:ml-4 shrink-0 w-full sm:w-auto justify-between sm:justify-start">
+                    <span className={`font-bold text-lg ${transaction.type === 'income' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                       {transaction.type === 'income' ? '+' : '-'} {formatMoney(transaction.amount, currency, numberFormat)}
                     </span>
-                    <button
-                      onClick={() => transaction.type === 'expense' ? setEditingExpense(transaction) : setEditingIncome(transaction)}
-                      className="text-blue-500 hover:text-blue-700 p-1 rounded-full hover:bg-blue-100 dark:hover:bg-blue-900/50"
-                      title={`Edit ${transaction.type}`}
-                    >
-                      <EditIcon />
-                    </button>
-                    <button
-                      onClick={() => handleDeleteTransaction(transaction)}
-                      className="text-red-500 hover:text-red-700 p-1 rounded-full hover:bg-red-100 dark:hover:bg-red-900/50"
-                      title={`Delete ${transaction.type}`}
-                    >
-                      <DeleteIcon />
-                    </button>
+                    <div className="flex gap-1 sm:mt-2"> {/* Group buttons */}
+                      <button
+                        onClick={() => transaction.type === 'expense' ? setEditingExpense(transaction) : setEditingIncome(transaction)}
+                        className="text-blue-500 hover:text-blue-700 p-2 rounded-full hover:bg-blue-100 dark:hover:bg-blue-900/50"
+                        title={`Edit ${transaction.type}`}
+                      >
+                        <EditIcon />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteTransaction(transaction)}
+                        className="text-red-500 hover:text-red-700 p-2 rounded-full hover:bg-red-100 dark:hover:bg-red-900/50"
+                        title={`Delete ${transaction.type}`}
+                      >
+                        <DeleteIcon />
+                      </button>
+                    </div>
                   </div>
                 </li>
               ))}
