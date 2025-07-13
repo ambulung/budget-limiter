@@ -40,16 +40,12 @@ const formatMoney = (amount, currencySymbol, numberFormat) => {
   }
 };
 
-// MODIFIED: Helper function to format date and time consistently with explicit colons
 const formatDateTime = (timestamp) => {
   if (!timestamp) return '';
-  const date = timestamp.toDate(); // Convert Firebase Timestamp to Date object
+  const date = timestamp.toDate();
 
-  // Options for toLocaleDateString: always show day, month, year
-  // Using 'en-GB' locale often gives DD/MM/YYYY format
   const formattedDate = date.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
 
-  // Manually format time to ensure colons
   const hours = String(date.getHours()).padStart(2, '0');
   const minutes = String(date.getMinutes()).padStart(2, '0');
   const seconds = String(date.getSeconds()).padStart(2, '0');
@@ -77,27 +73,36 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
   const [newIncomeAmount, setNewIncomeAmount] = useState('');
   const [newIncomeNotes, setNewIncomeNotes] = useState('');
 
-  const [budgetAdjustment, setBudgetAdjustment] = useState('');
+  // REMOVED: budgetAdjustment state
+  // const [budgetAdjustment, setBudgetAdjustment] = useState('');
 
   const { budget, currency, numberFormat, appTitle } = appSettings;
 
   const totalExpenses = expenses.reduce((sum, expense) => sum + expense.amount, 0);
   const totalIncome = incomes.reduce((sum, income) => sum + income.amount, 0);
   const remainingBudget = (budget + totalIncome) - totalExpenses;
-  const remainingProgress = (budget + totalIncome) > 0 ? (remainingBudget / (budget + totalIncome)) * 100 : 0;
+  // MODIFIED: remainingProgress calculation toFixed(2)
+  const remainingProgress = (budget + totalIncome) > 0
+    ? ((remainingBudget / (budget + totalIncome)) * 100).toFixed(2)
+    : 0; // Keep 0 if total budget is 0 to avoid NaN/Infinity
+
 
   const allTransactions = [...expenses.map(e => ({ ...e, type: 'expense' })), ...incomes.map(i => ({ ...i, type: 'income' }))]
     .sort((a, b) => b.createdAt.toDate() - a.createdAt.toDate());
 
   const getTextColorClass = () => {
-    if (remainingProgress <= 20) return 'text-red-500';
-    if (remainingProgress <= 50) return 'text-orange-500';
+    // Note: remainingProgress is now a string due to toFixed(2)
+    // Convert back to number for comparison if needed, or compare as string if consistent
+    const progressNum = parseFloat(remainingProgress);
+    if (progressNum <= 20) return 'text-red-500';
+    if (progressNum <= 50) return 'text-orange-500';
     return 'text-green-500';
   };
 
   const getProgressBarFillColor = () => {
-    if (remainingProgress <= 20) return 'bg-red-500';
-    if (remainingProgress <= 50) return 'bg-orange-500';
+    const progressNum = parseFloat(remainingProgress);
+    if (progressNum <= 20) return 'bg-red-500';
+    if (progressNum <= 50) return 'bg-orange-500';
     return 'bg-green-500';
   };
 
@@ -136,59 +141,8 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
     };
   }, [user.uid]);
 
-  const handleUndoBudgetChange = async (previousBudget) => {
-    const userDocRef = doc(db, 'users', user.uid);
-    try {
-      const newSettings = { ...appSettings, budget: previousBudget };
-      await setDoc(userDocRef, { budget: previousBudget }, { merge: true });
-      updateAppSettings(newSettings);
-      toast.success(`Budget restored to ${formatMoney(previousBudget, currency, numberFormat)}`);
-    } catch (error) {
-      toast.error("Failed to undo budget change.");
-      console.error("Undo budget error:", error);
-    }
-  };
-
-  const handleUpdateBudget = async (adjustmentAmount) => {
-    const amount = Number(adjustmentAmount);
-    if (isNaN(amount) || amount === 0) {
-      return toast.error("Please enter a valid number.");
-    }
-
-    const previousBudget = budget;
-    const newBudget = previousBudget + amount;
-
-    if (newBudget < totalExpenses) {
-      return toast.error(`New budget cannot be lower than total expenses (${formatMoney(totalExpenses, currency, numberFormat)}).`);
-    }
-
-    const userDocRef = doc(db, 'users', user.uid);
-    try {
-      const newSettings = { ...appSettings, budget: newBudget };
-      await setDoc(userDocRef, { budget: newBudget }, { merge: true });
-      updateAppSettings(newSettings);
-      setBudgetAdjustment('');
-
-      toast((t) => (
-        <span className="flex items-center gap-4">
-          Budget updated.
-          <button
-            className="px-3 py-1 bg-blue-500 text-white rounded-md font-semibold"
-            onClick={() => {
-              handleUndoBudgetChange(previousBudget);
-              toast.dismiss(t.id);
-            }}
-          >
-            Undo
-          </button>
-        </span>
-      ), { duration: 6000 });
-
-    } catch (error) {
-      toast.error("Failed to update budget.");
-      console.error(error);
-    }
-  };
+  // REMOVED: handleUndoBudgetChange function
+  // REMOVED: handleUpdateBudget function
 
   const handleSaveSettings = async (settings) => {
     if (!settings.budget || settings.budget <= 0) return toast.error("Please enter a valid budget.");
@@ -474,21 +428,22 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
               </div>
               {(budget + totalIncome) > 0 && (
                 <span className={`text-xl font-bold ${getTextColorClass()}`}>
-                  {Math.round(remainingProgress)}%
+                  {remainingProgress}% {/* MODIFIED: No Math.round(), uses toFixed(2) from calculation */}
                 </span>
               )}
             </div>
             <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-4 mb-2">
               <div
                 className={`h-full rounded-full transition-all duration-500 ${getProgressBarFillColor()}`}
-                style={{ width: `${Math.max(0, remainingProgress)}%` }}
+                style={{ width: `${Math.max(0, parseFloat(remainingProgress))}%` }} {/* MODIFIED: parseFloat for style */}
               ></div>
             </div>
             <p className={`text-right font-medium ${getTextColorClass()} mb-6`}>
               {formatMoney(remainingBudget, currency, numberFormat)} Remaining
             </p>
 
-            <div className="border-t dark:border-gray-700 pt-4">
+            {/* REMOVED: Adjust Budget Section */}
+            {/* <div className="border-t dark:border-gray-700 pt-4">
               <h4 className="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-2">Adjust Budget</h4>
               <div className="flex flex-col sm:flex-row items-center gap-2">
                 <input
@@ -511,7 +466,7 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
                   Remove Budget
                 </button>
               </div>
-            </div>
+            </div> */}
           </div>
 
           {/* --- Forms: Income on Left, Expense on Right --- */}
