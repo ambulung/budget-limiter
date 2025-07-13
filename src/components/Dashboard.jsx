@@ -37,11 +37,12 @@ const formatMoney = (amount, currencySymbol, numberFormat) => {
 };
 
 // --- Main Component ---
-const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updateAppSettings }) => {
+// MODIFIED: Added appIcon to props
+const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updateAppSettings, appIcon }) => {
   const [isNewUser, setIsNewUser] = useState(false);
   const [editingExpense, setEditingExpense] = useState(null);
   const [showConfirmDeleteAllModal, setShowConfirmDeleteAllModal] = useState(false);
-  
+
   const [expenses, setExpenses] = useState([]);
   const [newExpenseDesc, setNewExpenseDesc] = useState('');
   const [newExpenseAmount, setNewExpenseAmount] = useState('');
@@ -49,12 +50,12 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
 
   const [budgetAdjustment, setBudgetAdjustment] = useState('');
 
-  const { budget, currency, numberFormat, appTitle } = appSettings;
+  const { budget, currency, numberFormat, appTitle } = appSettings; // appTitle is already deconstructed
 
   const totalExpenses = expenses.reduce((sum, expense) => sum + expense.amount, 0);
   const remainingBudget = budget - totalExpenses;
   const remainingProgress = budget > 0 ? (remainingBudget / budget) * 100 : 0;
-  
+
   const getProgressBarColor = () => {
     if (remainingProgress <= 20) return 'bg-red-500';
     if (remainingProgress <= 50) return 'bg-orange-500';
@@ -103,7 +104,7 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
     if (isNaN(amount) || amount === 0) {
       return toast.error("Please enter a valid number.");
     }
-    
+
     const previousBudget = budget; // Capture budget *before* the change
     const newBudget = previousBudget + amount;
 
@@ -122,7 +123,7 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
       toast((t) => (
         <span className="flex items-center gap-4">
           Budget updated.
-          <button 
+          <button
             className="px-3 py-1 bg-blue-500 text-white rounded-md font-semibold"
             onClick={() => {
               handleUndoBudgetChange(previousBudget); // Call undo with the old value
@@ -150,12 +151,12 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
       toast.success("Settings saved!");
     } catch (error) { toast.error("Failed to save settings."); console.error(error); }
   };
-  
+
   const handleAddExpense = async (e) => {
     e.preventDefault();
     const amount = Number(newExpenseAmount);
     if (!newExpenseDesc || isNaN(amount) || amount <= 0) return toast.error("Please enter a valid description and amount.");
-    
+
     const expensesColRef = collection(db, 'users', user.uid, 'expenses');
     await addDoc(expensesColRef, {
       description: newExpenseDesc,
@@ -163,7 +164,7 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
       createdAt: new Date(),
       notes: newExpenseNotes,
     });
-    
+
     setNewExpenseDesc('');
     setNewExpenseAmount('');
     setNewExpenseNotes('');
@@ -255,7 +256,7 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
       return toast.error("There are no expenses to delete.");
     }
     const deletionPromise = Promise.all(
-      expenses.map(expense => 
+      expenses.map(expense =>
         deleteDoc(doc(db, 'users', user.uid, 'expenses', expense.id))
       )
     );
@@ -268,7 +269,7 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
 
   return (
     <>
-      <SetupModal 
+      <SetupModal
         isOpen={showSetupModal}
         onSave={handleSaveSettings}
         onClose={() => setShowSetupModal(false)}
@@ -291,6 +292,21 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
 
       <div className="max-w-5xl mx-auto p-4 md:p-8">
         <main>
+          {/* --- ADDED: App Icon and Title Section --- */}
+          <div className="flex items-center gap-4 mb-8 bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md">
+            <img
+              src={appIcon}
+              alt="App Icon"
+              className="w-16 h-16 object-cover bg-gray-700 rounded-lg flex-shrink-0"
+            />
+            <h1
+              className="text-gray-900 dark:text-gray-100 text-3xl font-extrabold leading-tight truncate"
+              title={appTitle}
+            >
+              {appTitle}
+            </h1>
+          </div>
+
           {/* --- BUDGET STATUS AND CONTROLS SECTION --- */}
           <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md mb-8">
             {/* Top line with total spent vs total budget */}
@@ -302,8 +318,8 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
             </div>
             {/* Progress bar showing remaining budget */}
             <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-4 mb-2">
-              <div 
-                className={`h-4 rounded-full transition-all duration-500 ${getProgressBarColor()}`} 
+              <div
+                className={`h-4 rounded-full transition-all duration-500 ${getProgressBarColor()}`}
                 style={{ width: `${Math.max(0, remainingProgress)}%` }}
               ></div>
             </div>
@@ -311,25 +327,25 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
             <p className="text-right font-medium text-gray-600 dark:text-gray-400 mb-6">
               {formatMoney(remainingBudget, currency, numberFormat)} Remaining
             </p>
-            
+
             {/* --- Budget adjustment controls --- */}
             <div className="border-t dark:border-gray-700 pt-4">
               <h4 className="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-2">Adjust Budget</h4>
               <div className="flex flex-col sm:flex-row items-center gap-2">
-                <input 
+                <input
                   type="number"
                   value={budgetAdjustment}
                   onChange={(e) => setBudgetAdjustment(e.target.value)}
                   placeholder="Amount"
                   className="p-2 w-full sm:w-1/3 bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
-                <button 
+                <button
                   onClick={() => handleUpdateBudget(budgetAdjustment)}
                   className="w-full sm:w-auto px-4 py-2 bg-green-500 text-white font-bold rounded-lg shadow-sm hover:bg-green-600 transition-all"
                 >
                   Add Budget
                 </button>
-                <button 
+                <button
                   onClick={() => handleUpdateBudget(-budgetAdjustment)}
                   className="w-full sm:w-auto px-4 py-2 bg-red-500 text-white font-bold rounded-lg shadow-sm hover:bg-red-600 transition-all"
                 >
@@ -345,10 +361,10 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
               <form onSubmit={handleAddExpense} className="flex flex-col gap-4">
                 <input value={newExpenseDesc} onChange={(e) => setNewExpenseDesc(e.target.value)} placeholder="Description" className="p-3 bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
                 <input type="number" value={newExpenseAmount} onChange={(e) => setNewExpenseAmount(e.target.value)} placeholder="Amount" className="p-3 bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                <textarea 
-                  value={newExpenseNotes} 
-                  onChange={(e) => setNewExpenseNotes(e.target.value)} 
-                  placeholder="Notes (optional)" 
+                <textarea
+                  value={newExpenseNotes}
+                  onChange={(e) => setNewExpenseNotes(e.target.value)}
+                  placeholder="Notes (optional)"
                   rows="3"
                   className="p-3 bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
@@ -359,7 +375,7 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-100">Your Expenses</h3>
                 <div className="flex items-center gap-2">
-                  <button 
+                  <button
                     onClick={handleDownloadPdf}
                     className="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
                     title="Download as PDF"
@@ -386,15 +402,15 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
                     </div>
                     <div className="flex items-center gap-2 ml-4 shrink-0">
                       <span className="font-bold text-gray-800 dark:text-gray-100">{formatMoney(expense.amount, currency, numberFormat)}</span>
-                      <button 
-                        onClick={() => setEditingExpense(expense)} 
+                      <button
+                        onClick={() => setEditingExpense(expense)}
                         className="text-blue-500 hover:text-blue-700 p-1 rounded-full hover:bg-blue-100 dark:hover:bg-blue-900/50"
                         title="Edit Expense"
                       >
                         <EditIcon />
                       </button>
-                      <button 
-                        onClick={() => handleDeleteExpense(expense.id)} 
+                      <button
+                        onClick={() => handleDeleteExpense(expense.id)}
                         className="text-red-500 hover:text-red-700 p-1 rounded-full hover:bg-red-100 dark:hover:bg-red-900/50"
                         title="Delete Expense"
                       >

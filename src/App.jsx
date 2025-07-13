@@ -2,8 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { onAuthStateChanged, signOut, deleteUser } from "firebase/auth";
-import { auth, db } from './firebase'; // Make sure to import db
-import { doc, getDoc } from "firebase/firestore"; // Import Firestore functions
+import { auth, db } from './firebase';
+import { doc, getDoc } from "firebase/firestore";
 import { Toaster, toast } from 'react-hot-toast';
 
 // Component Imports
@@ -13,8 +13,9 @@ import Login from './components/Login';
 import Footer from './components/Footer';
 import ConfirmationModal from './components/ConfirmationModal';
 
-// A default icon to use as a fallback
-const DEFAULT_ICON_URL = '/default-icon.jpg';
+// ADDED: Default icon URL. Make sure this path is correct for your project.
+// You might want to place a default image in your `public` folder or `src/assets`.
+const DEFAULT_ICON_URL = '/default-app-icon.png'; // Example path, adjust as needed
 
 function App() {
   const [user, setUser] = useState(null);
@@ -22,78 +23,81 @@ function App() {
   const [showSetupModal, setShowSetupModal] = useState(false);
   const [showConfirmEndSessionModal, setShowConfirmEndSessionModal] = useState(false);
 
-  // State to hold the settings that are shared between Header and Dashboard
+  // MODIFIED: Re-added appTitle to initial state for clarity, and added appIcon.
+  // appIcon will be updated from fetched data or use a default.
   const [appSettings, setAppSettings] = useState({
     budget: 1000,
     currency: '$',
-    appTitle: 'Budget', // A generic default title before user loads
-    appIcon: DEFAULT_ICON_URL,
     numberFormat: 'comma',
+    appTitle: 'My Expense Tracker', // Default title
+    appIcon: DEFAULT_ICON_URL, // Default icon
   });
 
-  // Effect to listen for authentication state changes
+  // Effect to listen for authentication state changes (no changes needed here)
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
-      // If there's no user, we can stop the main loading process
       if (!currentUser) {
         setLoading(false);
+        // MODIFIED: Reset appSettings to initial defaults on logout
+        setAppSettings({
+          budget: 1000,
+          currency: '$',
+          numberFormat: 'comma',
+          appTitle: 'My Expense Tracker',
+          appIcon: DEFAULT_ICON_URL,
+        });
       }
     });
-    // Cleanup subscription on unmount
     return () => unsubscribe();
   }, []);
 
-  // Effect to fetch user-specific settings from Firestore when the user logs in
+  // Effect to fetch user-specific settings from Firestore
   useEffect(() => {
-    // If there is no user, reset settings to default and do nothing else
     if (!user) {
-        setAppSettings({
-            budget: 1000,
-            currency: '$',
-            appTitle: 'Budget',
-            appIcon: DEFAULT_ICON_URL,
-            numberFormat: 'comma',
-        });
-        return;
+      // Already handled in onAuthStateChanged for logout case, but good to have a safeguard
+      return;
     };
 
-    // If there IS a user, fetch their settings
     const userDocRef = doc(db, 'users', user.uid);
     const fetchData = async () => {
       try {
         const docSnap = await getDoc(userDocRef);
         if (docSnap.exists()) {
-          // If the user has a document, use their saved settings
           const userData = docSnap.data();
+          // MODIFIED: Update all relevant settings including appTitle and appIcon
           setAppSettings({
             budget: userData.budget || 1000,
             currency: userData.currency || '$',
-            appTitle: userData.appTitle || `${user.displayName}'s Budget`,
-            appIcon: userData.appIcon || user.photoURL || DEFAULT_ICON_URL,
             numberFormat: userData.numberFormat || 'comma',
+            appTitle: userData.appTitle || 'My Expense Tracker', // Fetch title
+            appIcon: userData.appIcon || DEFAULT_ICON_URL, // Fetch icon URL
           });
+          // If this is a new user setup, the modal will be handled by Dashboard's useEffect
         } else {
-          // If it's a new user, create default settings based on their auth profile
-          setAppSettings(prev => ({
-              ...prev,
-              appTitle: `${user.displayName}'s Budget`,
-              appIcon: user.photoURL || DEFAULT_ICON_URL,
-          }));
+          // If doc doesn't exist, it's a new user or data was somehow lost.
+          // Reset to defaults and potentially show setup modal.
+          // The Dashboard's useEffect will handle `setShowSetupModal(true)` for new users.
+          setAppSettings({
+            budget: 1000,
+            currency: '$',
+            numberFormat: 'comma',
+            appTitle: 'My Expense Tracker',
+            appIcon: DEFAULT_ICON_URL,
+          });
         }
       } catch (error) {
         console.error("Failed to fetch user settings:", error);
         toast.error("Could not load user settings.");
       } finally {
-        // Stop the loading indicator once data has been fetched (or failed)
         setLoading(false);
       }
     };
 
     fetchData();
-  }, [user]); // This effect re-runs whenever the `user` object changes
+  }, [user]); // Depend on user to refetch settings when user changes
 
-  // Triggers the confirmation modal for guests or signs out regular users
+  // Logout and session handling logic (no changes needed here)
   const handleLogout = () => {
     if (auth.currentUser && auth.currentUser.isAnonymous) {
       setShowConfirmEndSessionModal(true);
@@ -105,7 +109,6 @@ function App() {
     }
   };
 
-  // Called from the modal to delete the guest user's data and session
   const handleConfirmEndSession = async () => {
     setShowConfirmEndSessionModal(false);
     if (auth.currentUser && auth.currentUser.isAnonymous) {
@@ -119,7 +122,7 @@ function App() {
     }
   };
 
-  // Display a loading screen while checking auth state and fetching data
+  // Loading screen (no changes needed here)
   if (loading) {
     return (
       <div className="flex justify-center items-center h-screen bg-slate-100 dark:bg-gray-900">
@@ -131,8 +134,7 @@ function App() {
   return (
     <div className="min-h-screen bg-slate-100 dark:bg-gray-900 flex flex-col">
       <Toaster position="top-center" reverseOrder={false} />
-      
-      {/* The modal for confirming the end of a guest session */}
+
       <ConfirmationModal
         isOpen={showConfirmEndSessionModal}
         onClose={() => setShowConfirmEndSessionModal(false)}
@@ -141,28 +143,24 @@ function App() {
         message="This will permanently delete all your data. Are you sure you want to continue?"
         confirmButtonText="Yes, End Session"
       />
-      
-      {/* The Header is only shown when a user is logged in */}
-      {/* It receives the dynamic title and icon from the `appSettings` state */}
+
       {user && (
-        <Header 
-          onLogout={handleLogout} 
-          onOpenSettings={() => setShowSetupModal(true)} 
-          appTitle={appSettings.appTitle}
-          appIcon={appSettings.appIcon}
+        // Header no longer needs appTitle or appIcon props.
+        <Header
+          onLogout={handleLogout}
+          onOpenSettings={() => setShowSetupModal(true)}
         />
       )}
-      
+
       <main className="flex-grow">
         {user ? (
-          <Dashboard 
-            user={user} 
-            showSetupModal={showSetupModal} 
+          <Dashboard
+            user={user}
+            showSetupModal={showSetupModal}
             setShowSetupModal={setShowSetupModal}
-            // Pass the settings down to the Dashboard
-            appSettings={appSettings}
-            // Pass the state setter function so the Dashboard can update the settings
+            appSettings={appSettings} // appSettings now includes appTitle
             updateAppSettings={setAppSettings}
+            appIcon={appSettings.appIcon} // Pass appIcon from appSettings
           />
         ) : (
           <Login />
