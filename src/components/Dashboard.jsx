@@ -55,7 +55,7 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
   const remainingBudget = budget - totalExpenses;
   const remainingProgress = budget > 0 ? (remainingBudget / budget) * 100 : 0;
 
-  // MODIFIED: getProgressBarColor now returns the text color class directly
+  // getTextColorClass now returns the text color class directly
   const getTextColorClass = () => {
     if (remainingProgress <= 20) return 'text-red-500';
     if (remainingProgress <= 50) return 'text-orange-500';
@@ -334,8 +334,8 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
                 style={{ width: `${Math.max(0, remainingProgress)}%` }}
               ></div>
             </div>
-            {/* Text showing remaining budget */}
-            <p className="text-right font-medium text-gray-600 dark:text-gray-400 mb-6">
+            {/* MODIFIED: Text showing remaining budget with dynamic color */}
+            <p className={`text-right font-medium ${getTextColorClass()} mb-6`}>
               {formatMoney(remainingBudget, currency, numberFormat)} Remaining
             </p>
 
