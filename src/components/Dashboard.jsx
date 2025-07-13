@@ -409,7 +409,7 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
         </main>
       </div>
     </>
-  );
+  )
 };
 
 export default Dashboard;
