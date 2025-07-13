@@ -10,7 +10,7 @@ import autoTable from 'jspdf-autotable';
 // Component Imports
 import SetupModal from './SetupModal';
 import EditExpenseModal from './EditExpenseModal';
-import EditIncomeModal from './EditIncomeModal'; // NEW: Import EditIncomeModal
+import EditIncomeModal from './EditIncomeModal';
 import ConfirmationModal from './ConfirmationModal';
 
 // --- SVG Icons ---
@@ -19,10 +19,7 @@ const DeleteIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" className="h-
 const DownloadIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg> );
 const DeleteAllIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-4v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg> );
 
-// NEW: Icons to distinguish income/expense in list
-const IncomeIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l-6 6m0 0l6 6m-6-6h12" /></svg> );
-const ExpenseIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 17l-6-6m0 0l6-6m-6 6h12" /></svg> );
-
+// Removed IncomeIcon and ExpenseIcon as they are not needed for separate lists with distinct styling
 
 // --- Helper Functions ---
 const formatMoney = (amount, currencySymbol, numberFormat) => {
@@ -46,7 +43,7 @@ const formatMoney = (amount, currencySymbol, numberFormat) => {
 const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updateAppSettings }) => {
   const [isNewUser, setIsNewUser] = useState(false);
   const [editingExpense, setEditingExpense] = useState(null);
-  const [editingIncome, setEditingIncome] = useState(null); // NEW: State for editing income
+  const [editingIncome, setEditingIncome] = useState(null);
   const [showConfirmDeleteAllModal, setShowConfirmDeleteAllModal] = useState(false);
   const [confirmDeleteAllType, setConfirmDeleteAllType] = useState(null); // 'expenses' or 'incomes'
 
@@ -55,7 +52,7 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
   const [newExpenseAmount, setNewExpenseAmount] = useState('');
   const [newExpenseNotes, setNewExpenseNotes] = useState('');
 
-  const [incomes, setIncomes] = useState([]); // State for incomes list
+  const [incomes, setIncomes] = useState([]);
   const [newIncomeDesc, setNewIncomeDesc] = useState('');
   const [newIncomeAmount, setNewIncomeAmount] = useState('');
   const [newIncomeNotes, setNewIncomeNotes] = useState('');
@@ -69,18 +66,12 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
   const remainingBudget = (budget + totalIncome) - totalExpenses;
   const remainingProgress = (budget + totalIncome) > 0 ? (remainingBudget / (budget + totalIncome)) * 100 : 0;
 
-  // Combine and sort all transactions for the single list
-  const allTransactions = [...expenses.map(e => ({ ...e, type: 'expense' })), ...incomes.map(i => ({ ...i, type: 'income' }))]
-    .sort((a, b) => b.createdAt.toDate() - a.createdAt.toDate()); // Sort by most recent first
-
-  // getTextColorClass now returns the text color class directly
   const getTextColorClass = () => {
     if (remainingProgress <= 20) return 'text-red-500';
     if (remainingProgress <= 50) return 'text-orange-500';
     return 'text-green-500';
   };
 
-  // This is for the progress bar itself (the background fill)
   const getProgressBarFillColor = () => {
     if (remainingProgress <= 20) return 'bg-red-500';
     if (remainingProgress <= 50) return 'bg-orange-500';
@@ -127,7 +118,7 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
     try {
       const newSettings = { ...appSettings, budget: previousBudget };
       await setDoc(userDocRef, { budget: previousBudget }, { merge: true });
-      updateAppSettings(newSettings); // Sync parent state
+      updateAppSettings(newSettings);
       toast.success(`Budget restored to ${formatMoney(previousBudget, currency, numberFormat)}`);
     } catch (error) {
       toast.error("Failed to undo budget change.");
@@ -141,11 +132,9 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
       return toast.error("Please enter a valid number.");
     }
 
-    const previousBudget = budget; // Capture budget *before* the change
+    const previousBudget = budget;
     const newBudget = previousBudget + amount;
 
-    // This logic might need refinement if you want budget to be dynamically adjusted based on income/expenses
-    // Currently, it prevents budget from going below current expenses, which is a good baseline.
     if (newBudget < totalExpenses) {
       return toast.error(`New budget cannot be lower than total expenses (${formatMoney(totalExpenses, currency, numberFormat)}).`);
     }
@@ -155,17 +144,16 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
       const newSettings = { ...appSettings, budget: newBudget };
       await setDoc(userDocRef, { budget: newBudget }, { merge: true });
       updateAppSettings(newSettings);
-      setBudgetAdjustment(''); // Clear input field
+      setBudgetAdjustment('');
 
-      // Show a toast with an Undo button
       toast((t) => (
         <span className="flex items-center gap-4">
           Budget updated.
           <button
             className="px-3 py-1 bg-blue-500 text-white rounded-md font-semibold"
             onClick={() => {
-              handleUndoBudgetChange(previousBudget); // Call undo with the old value
-              toast.dismiss(t.id); // Dismiss this toast
+              handleUndoBudgetChange(previousBudget);
+              toast.dismiss(t.id);
             }}
           >
             Undo
@@ -257,7 +245,6 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
     } catch (error) { toast.error("Failed to update expense."); console.error(error); }
   };
 
-  // NEW: handleUpdateIncome function
   const handleUpdateIncome = async (updatedIncome) => {
     const incomeDocRef = doc(db, 'users', user.uid, 'incomes', updatedIncome.id);
     try {
@@ -267,13 +254,14 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
         notes: updatedIncome.notes,
       });
       toast.success("Income updated!");
-      setEditingIncome(null); // Close the modal
+      setEditingIncome(null);
     } catch (error) {
       toast.error("Failed to update income.");
       console.error("Update income error:", error);
     }
   };
 
+  // This function is for individual transaction deletion
   const handleDeleteTransaction = async (transaction) => {
     const docRef = transaction.type === 'expense'
       ? doc(db, 'users', user.uid, 'expenses', transaction.id)
@@ -295,7 +283,6 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
     } catch (error) { toast.error(`Failed to delete ${transaction.type}.`); console.error(error); }
   };
 
-  // MODIFIED: handleUndoDelete now takes transactionType
   const handleUndoDelete = async (idToRestore, dataToRestore, transactionType) => {
     if (!idToRestore || !dataToRestore || !transactionType) return;
     const docRef = transactionType === 'expense'
@@ -377,7 +364,6 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
     toast.success("Report downloaded!");
   };
 
-  // MODIFIED: Consolidated Delete All function
   const confirmDeleteAll = (type) => {
     setConfirmDeleteAllType(type);
     setShowConfirmDeleteAllModal(true);
@@ -385,7 +371,7 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
 
   const handleDeleteAllConfirmed = async () => {
     setShowConfirmDeleteAllModal(false);
-    if (!confirmDeleteAllType) return; // Should not happen
+    if (!confirmDeleteAllType) return;
 
     let deletionPromise;
     let collectionRef;
@@ -409,7 +395,7 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
       successMsg = 'All incomes deleted successfully!';
       errorMsg = 'Failed to delete all incomes.';
     } else {
-        return; // Unknown type
+        return;
     }
 
     toast.promise(deletionPromise, {
@@ -417,7 +403,7 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
       success: successMsg,
       error: errorMsg,
     });
-    setConfirmDeleteAllType(null); // Reset type
+    setConfirmDeleteAllType(null);
   };
 
 
@@ -436,7 +422,6 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
         onSave={handleUpdateExpense}
         expense={editingExpense}
       />
-      {/* NEW: Render EditIncomeModal */}
       <EditIncomeModal
         isOpen={!!editingIncome}
         onClose={() => setEditingIncome(null)}
@@ -446,10 +431,10 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
       <ConfirmationModal
         isOpen={showConfirmDeleteAllModal}
         onClose={() => setShowConfirmDeleteAllModal(false)}
-        onConfirm={handleDeleteAllConfirmed} // MODIFIED: Call the consolidated handler
-        title={`Delete All ${confirmDeleteAllType === 'expenses' ? 'Expenses' : 'Incomes'}?`} // Dynamic title
-        message={`Are you sure you want to permanently delete all of your ${confirmDeleteAllType}? This action cannot be undone.`} // Dynamic message
-        confirmButtonText={`Yes, Delete All ${confirmDeleteAllType === 'expenses' ? 'Expenses' : 'Incomes'}`} // Dynamic button text
+        onConfirm={handleDeleteAllConfirmed}
+        title={`Delete All ${confirmDeleteAllType === 'expenses' ? 'Expenses' : 'Incomes'}?`}
+        message={`Are you sure you want to permanently delete all of your ${confirmDeleteAllType}? This action cannot be undone.`}
+        confirmButtonText={`Yes, Delete All ${confirmDeleteAllType === 'expenses' ? 'Expenses' : 'Incomes'}`}
       />
 
       <div className="max-w-5xl mx-auto p-4 md:p-8">
@@ -510,7 +495,7 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
           </div>
 
           {/* --- Forms: Income on Left, Expense on Right --- */}
-          <div className="grid md:grid-cols-2 gap-8 mb-8"> {/* Added mb-8 for spacing below forms */}
+          <div className="grid md:grid-cols-2 gap-8 mb-8">
             {/* --- Add New Income Form --- */}
             <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md">
               <h3 className="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-100">Add New Income</h3>
@@ -546,19 +531,19 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
             </div>
           </div>
 
-          {/* --- Consolidated Transactions List --- */}
+          {/* --- Your Expenses List --- */}
+          {/* This now spans the full width below the forms */}
           <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md">
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-100">All Transactions</h3>
+              <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-100">Your Expenses</h3>
               <div className="flex items-center gap-2">
                 <button
-                  onClick={handleDownloadPdf}
+                  onClick={handleDownloadPdf} // This will download a full financial report
                   className="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
                   title="Download Financial Report"
                 >
                   <DownloadIcon />
                 </button>
-                {/* Delete All Expenses Button */}
                 <button
                   onClick={() => confirmDeleteAll('expenses')}
                   className="p-2 rounded-full text-red-500 hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors"
@@ -566,52 +551,86 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
                 >
                   <DeleteAllIcon />
                 </button>
-                {/* Delete All Incomes Button */}
-                <button
-                  onClick={() => confirmDeleteAll('incomes')}
-                  className="p-2 rounded-full text-green-500 hover:bg-green-100 dark:hover:bg-green-900/50 transition-colors"
-                  title="Delete All Incomes"
-                >
-                  <DeleteAllIcon /> {/* Reusing icon, consider a distinct one if desired */}
-                </button>
               </div>
             </div>
-            {/* Quick overview of totals */}
             <div className="flex justify-between text-lg font-semibold mb-3">
               <span className="text-green-600 dark:text-green-400">Total Income: {formatMoney(totalIncome, currency, numberFormat)}</span>
               <span className="text-red-600 dark:text-red-400">Total Expenses: {formatMoney(totalExpenses, currency, numberFormat)}</span>
             </div>
             <ul className="space-y-3 h-[400px] overflow-y-auto pr-2">
-              {allTransactions.length === 0 && <p className="text-gray-500 dark:text-gray-400">No transactions added yet.</p>}
-              {allTransactions.map(transaction => (
-                <li
-                  key={transaction.id}
-                  className={`flex justify-between items-start p-3 rounded-lg
-                              ${transaction.type === 'income' ? 'bg-green-50 dark:bg-green-900/20' : 'bg-red-50 dark:bg-red-900/20'}`}
-                >
-                  <div className="flex-1 min-w-0 flex items-center gap-2">
-                    {transaction.type === 'income' ? <IncomeIcon /> : <ExpenseIcon />}
-                    <div>
-                      <p className="text-gray-700 dark:text-gray-200 break-words">{transaction.description}</p>
-                      {transaction.notes && ( <p className="text-sm italic text-gray-600 dark:text-gray-400 mt-1 break-words">{transaction.notes}</p> )}
-                      {transaction.createdAt && ( <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{new Date(transaction.createdAt.toDate()).toLocaleString()}</p> )}
-                    </div>
+              {expenses.length === 0 && <p className="text-gray-500 dark:text-gray-400">No expenses added yet.</p>}
+              {expenses.map(expense => (
+                <li key={expense.id} className="flex justify-between items-start bg-slate-100 dark:bg-gray-700 p-3 rounded-lg">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-gray-700 dark:text-gray-200 break-words">{expense.description}</p>
+                    {expense.notes && ( <p className="text-sm italic text-gray-600 dark:text-gray-400 mt-1 break-words">{expense.notes}</p> )}
+                    {expense.createdAt && ( <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{new Date(expense.createdAt.toDate()).toLocaleString()}</p> )}
                   </div>
                   <div className="flex items-center gap-2 ml-4 shrink-0">
-                    <span className={`font-bold ${transaction.type === 'income' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                      {transaction.type === 'income' ? '+' : '-'} {formatMoney(transaction.amount, currency, numberFormat)}
-                    </span>
+                    <span className="font-bold text-red-600 dark:text-red-400">- {formatMoney(expense.amount, currency, numberFormat)}</span>
                     <button
-                      onClick={() => transaction.type === 'expense' ? setEditingExpense(transaction) : setEditingIncome(transaction)}
+                      onClick={() => setEditingExpense(expense)}
                       className="text-blue-500 hover:text-blue-700 p-1 rounded-full hover:bg-blue-100 dark:hover:bg-blue-900/50"
-                      title={`Edit ${transaction.type}`}
+                      title="Edit Expense"
                     >
                       <EditIcon />
                     </button>
                     <button
-                      onClick={() => handleDeleteTransaction(transaction)}
+                      onClick={() => handleDeleteTransaction({ ...expense, type: 'expense' })} // Pass type for consolidated delete
                       className="text-red-500 hover:text-red-700 p-1 rounded-full hover:bg-red-100 dark:hover:bg-red-900/50"
-                      title={`Delete ${transaction.type}`}
+                      title="Delete Expense"
+                    >
+                      <DeleteIcon />
+                    </button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* --- Your Incomes List --- */}
+          <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md mt-8"> {/* Added mt-8 for spacing from expenses list */}
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-100">Your Incomes</h3>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleDownloadPdf} // This will download a full financial report
+                  className="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                  title="Download Financial Report"
+                >
+                  <DownloadIcon />
+                </button>
+                <button
+                  onClick={() => confirmDeleteAll('incomes')}
+                  className="p-2 rounded-full text-green-500 hover:bg-green-100 dark:hover:bg-green-900/50 transition-colors"
+                  title="Delete All Incomes"
+                >
+                  <DeleteAllIcon />
+                </button>
+              </div>
+            </div>
+            <ul className="space-y-3 h-[400px] overflow-y-auto pr-2">
+              {incomes.length === 0 && <p className="text-gray-500 dark:text-gray-400">No incomes added yet.</p>}
+              {incomes.map(income => (
+                <li key={income.id} className="flex justify-between items-start bg-slate-100 dark:bg-gray-700 p-3 rounded-lg">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-gray-700 dark:text-gray-200 break-words">{income.description}</p>
+                    {income.notes && ( <p className="text-sm italic text-gray-600 dark:text-gray-400 mt-1 break-words">{income.notes}</p> )}
+                    {income.createdAt && ( <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{new Date(income.createdAt.toDate()).toLocaleString()}</p> )}
+                  </div>
+                  <div className="flex items-center gap-2 ml-4 shrink-0">
+                    <span className="font-bold text-green-600 dark:text-green-400">+ {formatMoney(income.amount, currency, numberFormat)}</span>
+                    <button
+                      onClick={() => setEditingIncome(income)}
+                      className="text-blue-500 hover:text-blue-700 p-1 rounded-full hover:bg-blue-100 dark:hover:bg-blue-900/50"
+                      title="Edit Income"
+                    >
+                      <EditIcon />
+                    </button>
+                    <button
+                      onClick={() => handleDeleteTransaction({ ...income, type: 'income' })} // Pass type for consolidated delete
+                      className="text-red-500 hover:text-red-700 p-1 rounded-full hover:bg-red-100 dark:hover:bg-red-900/50"
+                      title="Delete Income"
                     >
                       <DeleteIcon />
                     </button>
