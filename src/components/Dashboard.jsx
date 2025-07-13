@@ -19,10 +19,7 @@ const DeleteIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" className="h-
 const DownloadIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg> );
 const DeleteAllIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-4v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg> );
 
-// NEW: Arrow Icons
-const ArrowUpIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-green-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" /></svg> );
-const ArrowDownIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-red-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" /></svg> );
-
+// Removed IncomeIcon and ExpenseIcon as they are not needed for separate lists with distinct styling
 
 // --- Helper Functions ---
 const formatMoney = (amount, currencySymbol, numberFormat) => {
@@ -48,7 +45,7 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
   const [editingExpense, setEditingExpense] = useState(null);
   const [editingIncome, setEditingIncome] = useState(null);
   const [showConfirmDeleteAllModal, setShowConfirmDeleteAllModal] = useState(false);
-  const [confirmDeleteAllType, setConfirmDeleteAllType] = useState(null);
+  const [confirmDeleteAllType, setConfirmDeleteAllType] = useState(null); // 'expenses' or 'incomes'
 
   const [expenses, setExpenses] = useState([]);
   const [newExpenseDesc, setNewExpenseDesc] = useState('');
@@ -264,6 +261,7 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
     }
   };
 
+  // This function is for individual transaction deletion
   const handleDeleteTransaction = async (transaction) => {
     const docRef = transaction.type === 'expense'
       ? doc(db, 'users', user.uid, 'expenses', transaction.id)
@@ -534,12 +532,13 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
           </div>
 
           {/* --- Your Expenses List --- */}
+          {/* This now spans the full width below the forms */}
           <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-100">Your Expenses</h3>
               <div className="flex items-center gap-2">
                 <button
-                  onClick={handleDownloadPdf}
+                  onClick={handleDownloadPdf} // This will download a full financial report
                   className="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
                   title="Download Financial Report"
                 >
@@ -562,13 +561,10 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
               {expenses.length === 0 && <p className="text-gray-500 dark:text-gray-400">No expenses added yet.</p>}
               {expenses.map(expense => (
                 <li key={expense.id} className="flex justify-between items-start bg-slate-100 dark:bg-gray-700 p-3 rounded-lg">
-                  <div className="flex-1 min-w-0 flex items-center gap-2"> {/* Added flex and gap */}
-                    <ArrowDownIcon /> {/* NEW: Arrow Down Icon */}
-                    <div>
-                      <p className="text-gray-700 dark:text-gray-200 break-words">{expense.description}</p>
-                      {expense.notes && ( <p className="text-sm italic text-gray-600 dark:text-gray-400 mt-1 break-words">{expense.notes}</p> )}
-                      {expense.createdAt && ( <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{new Date(expense.createdAt.toDate()).toLocaleString()}</p> )}
-                    </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-gray-700 dark:text-gray-200 break-words">{expense.description}</p>
+                    {expense.notes && ( <p className="text-sm italic text-gray-600 dark:text-gray-400 mt-1 break-words">{expense.notes}</p> )}
+                    {expense.createdAt && ( <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{new Date(expense.createdAt.toDate()).toLocaleString()}</p> )}
                   </div>
                   <div className="flex items-center gap-2 ml-4 shrink-0">
                     <span className="font-bold text-red-600 dark:text-red-400">- {formatMoney(expense.amount, currency, numberFormat)}</span>
@@ -580,7 +576,7 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
                       <EditIcon />
                     </button>
                     <button
-                      onClick={() => handleDeleteTransaction({ ...expense, type: 'expense' })}
+                      onClick={() => handleDeleteTransaction({ ...expense, type: 'expense' })} // Pass type for consolidated delete
                       className="text-red-500 hover:text-red-700 p-1 rounded-full hover:bg-red-100 dark:hover:bg-red-900/50"
                       title="Delete Expense"
                     >
@@ -593,12 +589,12 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
           </div>
 
           {/* --- Your Incomes List --- */}
-          <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md mt-8">
+          <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md mt-8"> {/* Added mt-8 for spacing from expenses list */}
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-100">Your Incomes</h3>
               <div className="flex items-center gap-2">
                 <button
-                  onClick={handleDownloadPdf}
+                  onClick={handleDownloadPdf} // This will download a full financial report
                   className="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
                   title="Download Financial Report"
                 >
@@ -617,13 +613,10 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
               {incomes.length === 0 && <p className="text-gray-500 dark:text-gray-400">No incomes added yet.</p>}
               {incomes.map(income => (
                 <li key={income.id} className="flex justify-between items-start bg-slate-100 dark:bg-gray-700 p-3 rounded-lg">
-                  <div className="flex-1 min-w-0 flex items-center gap-2"> {/* Added flex and gap */}
-                    <ArrowUpIcon /> {/* NEW: Arrow Up Icon */}
-                    <div>
-                      <p className="text-gray-700 dark:text-gray-200 break-words">{income.description}</p>
-                      {income.notes && ( <p className="text-sm italic text-gray-600 dark:text-gray-400 mt-1 break-words">{income.notes}</p> )}
-                      {income.createdAt && ( <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{new Date(income.createdAt.toDate()).toLocaleString()}</p> )}
-                    </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-gray-700 dark:text-gray-200 break-words">{income.description}</p>
+                    {income.notes && ( <p className="text-sm italic text-gray-600 dark:text-gray-400 mt-1 break-words">{income.notes}</p> )}
+                    {income.createdAt && ( <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{new Date(income.createdAt.toDate()).toLocaleString()}</p> )}
                   </div>
                   <div className="flex items-center gap-2 ml-4 shrink-0">
                     <span className="font-bold text-green-600 dark:text-green-400">+ {formatMoney(income.amount, currency, numberFormat)}</span>
@@ -635,7 +628,7 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
                       <EditIcon />
                     </button>
                     <button
-                      onClick={() => handleDeleteTransaction({ ...income, type: 'income' })}
+                      onClick={() => handleDeleteTransaction({ ...income, type: 'income' })} // Pass type for consolidated delete
                       className="text-red-500 hover:text-red-700 p-1 rounded-full hover:bg-red-100 dark:hover:bg-red-900/50"
                       title="Delete Income"
                     >
