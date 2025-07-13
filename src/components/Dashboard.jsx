@@ -69,12 +69,12 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
   const [expenses, setExpenses] = useState([]);
   const [newExpenseDesc, setNewExpenseDesc] = useState('');
   const [newExpenseAmount, setNewExpenseAmount] = useState('');
-  const [newExpenseNotes, setNewExpenseNotes] = '';
+  const [newExpenseNotes, setNewExpenseNotes] = useState(''); // Corrected initialization
 
   const [incomes, setIncomes] = useState([]);
   const [newIncomeDesc, setNewIncomeDesc] = useState('');
   const [newIncomeAmount, setNewIncomeAmount] = useState('');
-  const [newIncomeNotes, setNewIncomeNotes] = '';
+  const [newIncomeNotes, setNewIncomeNotes] = useState(''); // Corrected initialization
 
   const [selectedMonth, setSelectedMonth] = useState('');
   const [selectedYear, setSelectedYear] = useState('');
@@ -529,51 +529,50 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
             <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 gap-4">
               <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-100 mb-2 sm:mb-0">Transaction History</h3>
               {/* Filter and Search section */}
-              {/* Added flex-wrap to this div to ensure elements wrap nicely on very small screens */}
-              <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
-                {/* Search Input */}
+              <div className="flex flex-col sm:flex-row items-center gap-2 w-full sm:w-auto">
+                {/* Search Input - now takes full width on mobile */}
                 <input
                   type="text"
                   placeholder="Search transactions..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  // Updated classes for search input
-                  className="p-2 bg-[#2D3748] text-gray-300 placeholder-gray-400 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 w-full flex-1 min-w-[150px]"
+                  className="p-2 bg-[#2D3748] text-gray-300 placeholder-gray-400 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 w-full"
                 />
-                {/* Month Filter */}
-                <div className="relative w-full sm:w-auto flex-1 min-w-[120px]">
-                  <select
-                    value={selectedMonth}
-                    onChange={(e) => setSelectedMonth(e.target.value)}
-                    // Updated classes for select dropdowns
-                    className="p-2 pr-8 rounded-lg bg-[#2D3748] text-gray-300 border border-gray-700 appearance-none w-full"
-                  >
-                    <option value="">All Months</option>
-                    {monthNames.map((month, index) => (
-                      <option key={index} value={index}>{month}</option>
-                    ))}
-                  </select>
-                  <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
-                    <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+                {/* Wrapper for Month and Year filters to keep them side-by-side on mobile */}
+                <div className="flex flex-row gap-2 w-full"> {/* Added flex-row and w-full */}
+                  {/* Month Filter */}
+                  <div className="relative flex-1 min-w-[120px]"> {/* Changed w-full sm:w-auto to flex-1 min-w */}
+                    <select
+                      value={selectedMonth}
+                      onChange={(e) => setSelectedMonth(e.target.value)}
+                      className="p-2 pr-8 rounded-lg bg-[#2D3748] text-gray-300 border border-gray-700 appearance-none w-full"
+                    >
+                      <option value="">All Months</option>
+                      {monthNames.map((month, index) => (
+                        <option key={index} value={index}>{month}</option>
+                      ))}
+                    </select>
+                    <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
+                      <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+                    </div>
                   </div>
-                </div>
-                {/* Year Filter */}
-                <div className="relative w-full sm:w-auto flex-1 min-w-[100px]">
-                  <select
-                    value={selectedYear}
-                    onChange={(e) => setSelectedYear(e.target.value)}
-                    // Updated classes for select dropdowns
-                    className="p-2 pr-8 rounded-lg bg-[#2D3748] text-gray-300 border border-gray-700 appearance-none w-full"
-                  >
-                    <option value="">All Years</option>
-                    {availableYears.map(year => (
-                      <option key={year} value={year}>{year}</option>
-                    ))}
-                  </select>
-                  <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
-                    <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+                  {/* Year Filter */}
+                  <div className="relative flex-1 min-w-[100px]"> {/* Changed w-full sm:w-auto to flex-1 min-w */}
+                    <select
+                      value={selectedYear}
+                      onChange={(e) => setSelectedYear(e.target.value)}
+                      className="p-2 pr-8 rounded-lg bg-[#2D3748] text-gray-300 border border-gray-700 appearance-none w-full"
+                    >
+                      <option value="">All Years</option>
+                      {availableYears.map(year => (
+                        <option key={year} value={year}>{year}</option>
+                      ))}
+                    </select>
+                    <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
+                      <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+                    </div>
                   </div>
-                </div>
+                </div> {/* End of Month/Year wrapper */}
               </div>
             </div>
             {/* Action Buttons */}
