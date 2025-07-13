@@ -13,30 +13,24 @@ import Login from './components/Login';
 import Footer from './components/Footer';
 import ConfirmationModal from './components/ConfirmationModal';
 
-// REMOVED: DEFAULT_ICON_URL constant
-
 function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showSetupModal, setShowSetupModal] = useState(false);
   const [showConfirmEndSessionModal, setShowConfirmEndSessionModal] = useState(false);
 
-  // MODIFIED: appSettings state no longer includes appIcon
   const [appSettings, setAppSettings] = useState({
     budget: 1000,
     currency: '$',
     numberFormat: 'comma',
-    appTitle: 'My Expense Tracker', // Default title
-    // REMOVED: appIcon property
+    appTitle: 'My Expense Tracker',
   });
 
-  // Effect to listen for authentication state changes
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
       if (!currentUser) {
         setLoading(false);
-        // MODIFIED: Reset appSettings to initial defaults without appIcon
         setAppSettings({
           budget: 1000,
           currency: '$',
@@ -48,7 +42,6 @@ function App() {
     return () => unsubscribe();
   }, []);
 
-  // Effect to fetch user-specific settings from Firestore
   useEffect(() => {
     if (!user) {
       return;
@@ -60,16 +53,13 @@ function App() {
         const docSnap = await getDoc(userDocRef);
         if (docSnap.exists()) {
           const userData = docSnap.data();
-          // MODIFIED: Update all relevant settings, but do NOT expect appIcon from Firestore
           setAppSettings({
             budget: userData.budget || 1000,
             currency: userData.currency || '$',
             numberFormat: userData.numberFormat || 'comma',
-            appTitle: userData.appTitle || 'My Expense Tracker', // Fetch title
-            // REMOVED: appIcon property from userData
+            appTitle: userData.appTitle || 'My Expense Tracker',
           });
         } else {
-          // If doc doesn't exist, reset to defaults without appIcon
           setAppSettings({
             budget: 1000,
             currency: '$',
@@ -88,7 +78,6 @@ function App() {
     fetchData();
   }, [user]);
 
-  // Logout and session handling logic
   const handleLogout = () => {
     if (auth.currentUser && auth.currentUser.isAnonymous) {
       setShowConfirmEndSessionModal(true);
@@ -113,7 +102,6 @@ function App() {
     }
   };
 
-  // Loading screen
   if (loading) {
     return (
       <div className="flex justify-center items-center h-screen bg-slate-100 dark:bg-gray-900">
@@ -123,6 +111,7 @@ function App() {
   }
 
   return (
+    // This div already has min-h-screen and flex flex-col, which is good
     <div className="min-h-screen bg-slate-100 dark:bg-gray-900 flex flex-col">
       <Toaster position="top-center" reverseOrder={false} />
 
@@ -142,15 +131,15 @@ function App() {
         />
       )}
 
+      {/* --- MODIFIED: Added flex-grow to the main element --- */}
       <main className="flex-grow">
         {user ? (
           <Dashboard
             user={user}
             showSetupModal={showSetupModal}
             setShowSetupModal={setShowSetupModal}
-            appSettings={appSettings} // appSettings no longer includes appIcon
+            appSettings={appSettings}
             updateAppSettings={setAppSettings}
-            // REMOVED: appIcon prop
           />
         ) : (
           <Login />
