@@ -1,6 +1,6 @@
 // src/components/Dashboard.jsx
 
-import React, { useState, useEffect, useMemo } from 'react'; // FIXED: Ensure useEffect and useMemo are imported
+import React, { useState, useEffect, useMemo } from 'react';
 import { db } from '../firebase';
 import { doc, getDoc, setDoc, collection, addDoc, onSnapshot, deleteDoc, query, orderBy, updateDoc } from "firebase/firestore";
 import { toast } from 'react-hot-toast';
@@ -79,9 +79,8 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
   const [newIncomeAmount, setNewIncomeAmount] = useState('');
   const [newIncomeNotes, setNewIncomeNotes] = useState('');
 
-  // NEW: State for sorting filters
-  const [selectedMonth, setSelectedMonth] = useState(''); // Empty string for "All Months"
-  const [selectedYear, setSelectedYear] = useState('');   // Empty string for "All Years"
+  const [selectedMonth, setSelectedMonth] = useState('');
+  const [selectedYear, setSelectedYear] = useState('');
 
   const { budget, currency, numberFormat, appTitle } = appSettings;
 
@@ -92,22 +91,19 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
     ? (((budget + totalIncome) - totalExpenses) / (budget + totalIncome) * 100).toFixed(2)
     : 0;
 
-  // NEW: Filtered and sorted transactions (using useMemo for performance)
   const filteredTransactions = useMemo(() => {
     let transactions = [
       ...expenses.map(e => ({ ...e, type: 'expense' })),
       ...incomes.map(i => ({ ...i, type: 'income' }))
     ];
 
-    // Apply month filter
     if (selectedMonth !== '') {
       transactions = transactions.filter(t => {
         const date = t.createdAt.toDate();
-        return date.getMonth() === parseInt(selectedMonth); // getMonth is 0-indexed
+        return date.getMonth() === parseInt(selectedMonth);
       });
     }
 
-    // Apply year filter
     if (selectedYear !== '') {
       transactions = transactions.filter(t => {
         const date = t.createdAt.toDate();
@@ -115,12 +111,10 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
       });
     }
 
-    // Sort by most recent first (always applies)
     return transactions.sort((a, b) => b.createdAt.toDate() - a.createdAt.toDate());
   }, [expenses, incomes, selectedMonth, selectedYear]);
 
 
-  // NEW: Generate unique years from transactions for the year dropdown
   const availableYears = useMemo(() => {
     const years = new Set();
     [...expenses, ...incomes].forEach(t => {
@@ -128,7 +122,7 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
         years.add(t.createdAt.toDate().getFullYear());
       }
     });
-    return Array.from(years).sort((a, b) => b - a); // Sort descending
+    return Array.from(years).sort((a, b) => b - a);
   }, [expenses, incomes]);
 
 
@@ -470,7 +464,6 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
               )}
             </div>
             <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-4 mb-2">
-              {/* This comment was causing the esbuild error. Moved to its own line. */}
               <div
                 className={`h-full rounded-full transition-all duration-500 ${getProgressBarFillColor()}`}
                 style={{ width: `${Math.max(0, parseFloat(remainingProgress))}%` }}
@@ -520,15 +513,15 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
 
           {/* --- Consolidated Transactions List --- */}
           <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-100">Transaction History</h3>
-              <div className="flex items-center gap-2">
-                {/* NEW: Month and Year Filters */}
-                <div className="relative">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 gap-4"> {/* MODIFIED: Added flex-col, sm:flex-row, gap-4 */}
+              <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-100 mb-2 sm:mb-0">Transaction History</h3> {/* MODIFIED: Added mb-2 sm:mb-0 for spacing */}
+              <div className="flex flex-col sm:flex-row items-center gap-2 w-full sm:w-auto"> {/* MODIFIED: Added flex-col, sm:flex-row, and width classes */}
+                {/* Month Filter */}
+                <div className="relative w-full sm:w-auto"> {/* MODIFIED: Added w-full sm:w-auto */}
                   <select
                     value={selectedMonth}
                     onChange={(e) => setSelectedMonth(e.target.value)}
-                    className="p-2 pr-8 rounded-lg bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-200 appearance-none"
+                    className="p-2 pr-8 rounded-lg bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-200 appearance-none w-full" /* MODIFIED: Added w-full */
                   >
                     <option value="">All Months</option>
                     {monthNames.map((month, index) => (
@@ -539,11 +532,12 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
                     <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
                   </div>
                 </div>
-                <div className="relative">
+                {/* Year Filter */}
+                <div className="relative w-full sm:w-auto"> {/* MODIFIED: Added w-full sm:w-auto */}
                   <select
                     value={selectedYear}
                     onChange={(e) => setSelectedYear(e.target.value)}
-                    className="p-2 pr-8 rounded-lg bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-200 appearance-none"
+                    className="p-2 pr-8 rounded-lg bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-200 appearance-none w-full" /* MODIFIED: Added w-full */
                   >
                     <option value="">All Years</option>
                     {availableYears.map(year => (
@@ -557,21 +551,21 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
 
                 <button
                   onClick={handleDownloadPdf}
-                  className="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                  className="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors flex-shrink-0" /* MODIFIED: Added flex-shrink-0 */
                   title="Download Financial Report"
                 >
                   <DownloadIcon />
                 </button>
                 <button
                   onClick={() => confirmDeleteAll('expenses')}
-                  className="p-2 rounded-full text-red-500 hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors"
+                  className="p-2 rounded-full text-red-500 hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors flex-shrink-0" /* MODIFIED: Added flex-shrink-0 */
                   title="Delete All Expenses"
                 >
                   <DeleteAllIcon />
                 </button>
                 <button
                   onClick={() => confirmDeleteAll('incomes')}
-                  className="p-2 rounded-full text-green-500 hover:bg-green-100 dark:hover:bg-green-900/50 transition-colors"
+                  className="p-2 rounded-full text-green-500 hover:bg-green-100 dark:hover:bg-green-900/50 transition-colors flex-shrink-0" /* MODIFIED: Added flex-shrink-0 */
                   title="Delete All Incomes"
                 >
                   <DeleteAllIcon />
