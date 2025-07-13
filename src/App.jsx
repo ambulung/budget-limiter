@@ -15,7 +15,7 @@ import ConfirmationModal from './components/ConfirmationModal';
 
 // ADDED: Default icon URL. Make sure this path is correct for your project.
 // You might want to place a default image in your `public` folder or `src/assets`.
-const DEFAULT_ICON_URL = '/default-app-icon.png'; // Example path, adjust as needed
+const DEFAULT_ICON_URL = '/default-app-icon.jpg'; // Example path, adjust as needed
 
 function App() {
   const [user, setUser] = useState(null);
