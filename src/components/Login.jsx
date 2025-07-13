@@ -124,7 +124,7 @@ const Login = () => {
       
       {/* --- MOVED AND STYLED: BRANDING HEADER --- */}
       <h2 className="text-3xl font-bold text-center text-white tracking-widest mb-6">
-        BUDGET.LIMIT
+        BUDGET<span className="text-blue-400">.</span>LIMIT
       </h2>
       
       <div className="w-full max-w-md bg-white dark:bg-gray-800 p-8 rounded-xl shadow-2xl">
