@@ -37,7 +37,6 @@ const formatMoney = (amount, currencySymbol, numberFormat) => {
 };
 
 // --- Main Component ---
-// MODIFIED: Removed appIcon from props
 const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updateAppSettings }) => {
   const [isNewUser, setIsNewUser] = useState(false);
   const [editingExpense, setEditingExpense] = useState(null);
@@ -45,12 +44,12 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
 
   const [expenses, setExpenses] = useState([]);
   const [newExpenseDesc, setNewExpenseDesc] = useState('');
+  // FIX: Corrected useState initialization
   const [newExpenseAmount, setNewExpenseAmount] = useState('');
-  const [newExpenseNotes, setNewExpenseNotes] = '';
+  const [newExpenseNotes, setNewExpenseNotes] = useState(''); // Corrected this one too, just in case
 
   const [budgetAdjustment, setBudgetAdjustment] = useState('');
 
-  // appTitle is still destructured from appSettings as it's used in PDF export
   const { budget, currency, numberFormat, appTitle } = appSettings;
 
   const totalExpenses = expenses.reduce((sum, expense) => sum + expense.amount, 0);
@@ -146,10 +145,11 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
     if (!settings.budget || settings.budget <= 0) return toast.error("Please enter a valid budget.");
     const userDocRef = doc(db, 'users', user.uid);
     try {
-      // MODIFIED: Ensure appIcon is NOT saved to Firestore here
-      const { appIcon, ...settingsToSave } = settings; // Destructure to exclude appIcon
-      await setDoc(userDocRef, settingsToSave, { merge: true });
-      updateAppSettings(prev => ({...prev, ...settings})); // Update parent state with all settings (including appTitle for display)
+      // Ensure appIcon is NOT saved to Firestore here
+      // No appIcon property in settings anymore after previous removals, so this line is effectively removed.
+      // const { appIcon, ...settingsToSave } = settings;
+      await setDoc(userDocRef, settings, { merge: true }); // Save all settings as they are now
+      updateAppSettings(prev => ({...prev, ...settings})); // Update parent state with all settings
       setShowSetupModal(false);
       toast.success("Settings saved!");
     } catch (error) { toast.error("Failed to save settings."); console.error(error); }
@@ -157,21 +157,32 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
 
   const handleAddExpense = async (e) => {
     e.preventDefault();
+
     const amount = Number(newExpenseAmount);
-    if (!newExpenseDesc || isNaN(amount) || amount <= 0) return toast.error("Please enter a valid description and amount.");
+
+    if (!newExpenseDesc.trim() || isNaN(amount) || amount <= 0) { // Added .trim() for description
+      console.log('Validation failed:', { newExpenseDesc, newExpenseAmount, amount });
+      toast.error("Please enter a valid description and amount.");
+      return;
+    }
 
     const expensesColRef = collection(db, 'users', user.uid, 'expenses');
-    await addDoc(expensesColRef, {
-      description: newExpenseDesc,
-      amount: amount,
-      createdAt: new Date(),
-      notes: newExpenseNotes,
-    });
+    try {
+      await addDoc(expensesColRef, {
+        description: newExpenseDesc.trim(), // Save trimmed description
+        amount: amount,
+        createdAt: new Date(),
+        notes: newExpenseNotes.trim(), // Save trimmed notes
+      });
 
-    setNewExpenseDesc('');
-    setNewExpenseAmount('');
-    setNewExpenseNotes('');
-    toast.success("Expense added!");
+      setNewExpenseDesc('');
+      setNewExpenseAmount('');
+      setNewExpenseNotes('');
+      toast.success("Expense added!");
+    } catch (error) {
+      console.error("Error adding expense:", error);
+      toast.error("Failed to add expense.");
+    }
   };
 
   const handleUpdateExpense = async (updatedExpense) => {
@@ -224,7 +235,7 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
     doc.text("Expense Report", 14, 22);
     doc.setFontSize(11);
     doc.setTextColor(100);
-    doc.text(`For: ${appTitle}`, 14, 30); // appTitle is still used here
+    doc.text(`For: ${appTitle}`, 14, 30);
     doc.text(`Date: ${new Date().toLocaleDateString()}`, 14, 36);
 
     const tableColumn = ["Date", "Description", "Notes", "Amount"];
@@ -295,8 +306,6 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
 
       <div className="max-w-5xl mx-auto p-4 md:p-8">
         <main>
-          {/* --- REMOVED: App Icon and Title Section --- */}
-          {/* The app title is now managed by the SetupModal and passed via appSettings */}
           <h1
             className="text-gray-900 dark:text-gray-100 text-3xl font-extrabold leading-tight truncate mb-8"
             title={appTitle}
@@ -304,28 +313,23 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
             {appTitle}
           </h1>
 
-          {/* --- BUDGET STATUS AND CONTROLS SECTION --- */}
           <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md mb-8">
-            {/* Top line with total spent vs total budget */}
             <div className="flex justify-between items-center mb-2">
               <div className="text-2xl font-bold text-gray-800 dark:text-gray-100">
                 {formatMoney(totalExpenses, currency, numberFormat)}
                 <span className="text-gray-400 dark:text-gray-500 text-lg"> Spent of {formatMoney(budget, currency, numberFormat)}</span>
               </div>
             </div>
-            {/* Progress bar showing remaining budget */}
             <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-4 mb-2">
               <div
                 className={`h-4 rounded-full transition-all duration-500 ${getProgressBarColor()}`}
                 style={{ width: `${Math.max(0, remainingProgress)}%` }}
               ></div>
             </div>
-            {/* Text showing remaining budget */}
             <p className="text-right font-medium text-gray-600 dark:text-gray-400 mb-6">
               {formatMoney(remainingBudget, currency, numberFormat)} Remaining
             </p>
 
-            {/* --- Budget adjustment controls --- */}
             <div className="border-t dark:border-gray-700 pt-4">
               <h4 className="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-2">Adjust Budget</h4>
               <div className="flex flex-col sm:flex-row items-center gap-2">
