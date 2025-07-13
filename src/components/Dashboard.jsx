@@ -44,9 +44,8 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
 
   const [expenses, setExpenses] = useState([]);
   const [newExpenseDesc, setNewExpenseDesc] = useState('');
-  // FIX: Corrected useState initialization
   const [newExpenseAmount, setNewExpenseAmount] = useState('');
-  const [newExpenseNotes, setNewExpenseNotes] = useState(''); // Corrected this one too, just in case
+  const [newExpenseNotes, setNewExpenseNotes] = useState('');
 
   const [budgetAdjustment, setBudgetAdjustment] = useState('');
 
@@ -56,11 +55,20 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
   const remainingBudget = budget - totalExpenses;
   const remainingProgress = budget > 0 ? (remainingBudget / budget) * 100 : 0;
 
-  const getProgressBarColor = () => {
+  // MODIFIED: getProgressBarColor now returns the text color class directly
+  const getTextColorClass = () => {
+    if (remainingProgress <= 20) return 'text-red-500';
+    if (remainingProgress <= 50) return 'text-orange-500';
+    return 'text-blue-600'; // Or a default color like 'text-green-500' if budget is high
+  };
+
+  // This is for the progress bar itself (the background fill)
+  const getProgressBarFillColor = () => {
     if (remainingProgress <= 20) return 'bg-red-500';
     if (remainingProgress <= 50) return 'bg-orange-500';
     return 'bg-blue-600';
   };
+
 
   useEffect(() => {
     const userDocRef = doc(db, 'users', user.uid);
@@ -145,10 +153,7 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
     if (!settings.budget || settings.budget <= 0) return toast.error("Please enter a valid budget.");
     const userDocRef = doc(db, 'users', user.uid);
     try {
-      // Ensure appIcon is NOT saved to Firestore here
-      // No appIcon property in settings anymore after previous removals, so this line is effectively removed.
-      // const { appIcon, ...settingsToSave } = settings;
-      await setDoc(userDocRef, settings, { merge: true }); // Save all settings as they are now
+      await setDoc(userDocRef, settings, { merge: true });
       updateAppSettings(prev => ({...prev, ...settings})); // Update parent state with all settings
       setShowSetupModal(false);
       toast.success("Settings saved!");
@@ -160,7 +165,7 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
 
     const amount = Number(newExpenseAmount);
 
-    if (!newExpenseDesc.trim() || isNaN(amount) || amount <= 0) { // Added .trim() for description
+    if (!newExpenseDesc.trim() || isNaN(amount) || amount <= 0) {
       console.log('Validation failed:', { newExpenseDesc, newExpenseAmount, amount });
       toast.error("Please enter a valid description and amount.");
       return;
@@ -169,10 +174,10 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
     const expensesColRef = collection(db, 'users', user.uid, 'expenses');
     try {
       await addDoc(expensesColRef, {
-        description: newExpenseDesc.trim(), // Save trimmed description
+        description: newExpenseDesc.trim(),
         amount: amount,
         createdAt: new Date(),
-        notes: newExpenseNotes.trim(), // Save trimmed notes
+        notes: newExpenseNotes.trim(),
       });
 
       setNewExpenseDesc('');
@@ -313,23 +318,28 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
             {appTitle}
           </h1>
 
+          {/* --- MODIFIED: Budget Status Display --- */}
           <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md mb-8">
             <div className="flex justify-between items-center mb-2">
-              <div className="text-2xl font-bold text-gray-800 dark:text-gray-100">
+              {/* Dynamic color applied to the total spent part */}
+              <div className={`text-2xl font-bold ${getTextColorClass()}`}>
                 {formatMoney(totalExpenses, currency, numberFormat)}
-                <span className="text-gray-400 dark:text-gray-500 text-lg"> Spent of {formatMoney(budget, currency, numberFormat)}</span>
+                <span className="text-gray-400 dark:text-gray-500 text-lg"> / {formatMoney(budget, currency, numberFormat)}</span>
               </div>
             </div>
+            {/* Progress bar showing remaining budget */}
             <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-4 mb-2">
               <div
-                className={`h-4 rounded-full transition-all duration-500 ${getProgressBarColor()}`}
+                className={`h-4 rounded-full transition-all duration-500 ${getProgressBarFillColor()}`}
                 style={{ width: `${Math.max(0, remainingProgress)}%` }}
               ></div>
             </div>
+            {/* Text showing remaining budget */}
             <p className="text-right font-medium text-gray-600 dark:text-gray-400 mb-6">
               {formatMoney(remainingBudget, currency, numberFormat)} Remaining
             </p>
 
+            {/* --- Budget adjustment controls --- */}
             <div className="border-t dark:border-gray-700 pt-4">
               <h4 className="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-2">Adjust Budget</h4>
               <div className="flex flex-col sm:flex-row items-center gap-2">
