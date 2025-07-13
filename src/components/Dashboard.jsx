@@ -551,7 +551,7 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
               </div>
             </div>
             {/* NEW: Horizontal and Left-aligned Action Buttons */}
-            <div className="flex flex-wrap gap-2 mb-4 justify-start"> {/* flex-wrap for small screens, justify-start for left-align */}
+            <div className="flex flex-wrap gap-2 mb-4 justify-end"> {/* flex-wrap for small screens, justify-start for left-align */}
               <button
                 onClick={handleDownloadPdf}
                 className="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors flex-shrink-0"
