@@ -39,4 +39,4 @@ const Header = ({ onOpenSettings, onLogout }) => {
   );
 };
 
-export default Header;
+export default Header
