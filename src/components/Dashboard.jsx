@@ -55,18 +55,18 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
   const remainingBudget = budget - totalExpenses;
   const remainingProgress = budget > 0 ? (remainingBudget / budget) * 100 : 0;
 
-  // MODIFIED: Changed 'text-blue-600' to 'text-green-500'
+  // getTextColorClass now returns the text color class directly
   const getTextColorClass = () => {
     if (remainingProgress <= 20) return 'text-red-500';
     if (remainingProgress <= 50) return 'text-orange-500';
-    return 'text-green-500'; // Changed to green
+    return 'text-green-500';
   };
 
-  // MODIFIED: Changed 'bg-blue-600' to 'bg-green-500'
+  // This is for the progress bar itself (the background fill)
   const getProgressBarFillColor = () => {
     if (remainingProgress <= 20) return 'bg-red-500';
     if (remainingProgress <= 50) return 'bg-orange-500';
-    return 'bg-green-500'; // Changed to green
+    return 'bg-green-500';
   };
 
 
@@ -318,23 +318,41 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
             {appTitle}
           </h1>
 
-          {/* --- MODIFIED: Budget Status Display --- */}
+          {/* --- MODIFIED: Budget Status Display with Percentage on Bar --- */}
           <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md mb-8">
             <div className="flex justify-between items-center mb-2">
-              {/* Dynamic color applied to the total spent part */}
               <div className={`text-2xl font-bold ${getTextColorClass()}`}>
                 {formatMoney(totalExpenses, currency, numberFormat)}
                 <span className="text-gray-400 dark:text-gray-500 text-lg"> / {formatMoney(budget, currency, numberFormat)}</span>
               </div>
             </div>
-            {/* Progress bar showing remaining budget */}
-            <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-4 mb-2">
+            {/* Progress bar container with relative positioning */}
+            <div className="relative w-full bg-gray-200 dark:bg-gray-700 rounded-full h-4 mb-2">
               <div
-                className={`h-4 rounded-full transition-all duration-500 ${getProgressBarFillColor()}`}
+                className={`h-full rounded-full transition-all duration-500 ${getProgressBarFillColor()}`}
                 style={{ width: `${Math.max(0, remainingProgress)}%` }}
               ></div>
+              {/* Percentage Text overlay */}
+              {budget > 0 && ( // Only show percentage if budget is set
+                <span
+                  className={`absolute right-2 top-1/2 -translate-y-1/2 text-xs font-semibold ${getTextColorClass()} ${remainingProgress < 5 && 'opacity-0'}`} // Hide if too small
+                  style={{
+                    // Position dynamically based on progress, but clamp to avoid going off bar
+                    left: `calc(${Math.max(0, remainingProgress)}% - 40px)`, // Adjust 40px for text width
+                    minWidth: '40px', // Ensure text has enough space
+                    textAlign: 'right',
+                    // If progress is very low, make text appear on the right side of the bar
+                    // This is a stylistic choice, adjust as needed
+                    transform: remainingProgress > 95 ? 'translateX(0)' : `translateX(${Math.max(0, remainingProgress - 100)}%)`,
+                    // Ensure text is visible over dark backgrounds if using light text colors, etc.
+                    textShadow: '1px 1px 2px rgba(0,0,0,0.3)', // Subtle shadow for contrast
+                  }}
+                >
+                  {Math.round(remainingProgress)}%
+                </span>
+              )}
             </div>
-            {/* MODIFIED: Text showing remaining budget with dynamic color */}
+            {/* Text showing remaining budget with dynamic color */}
             <p className={`text-right font-medium ${getTextColorClass()} mb-6`}>
               {formatMoney(remainingBudget, currency, numberFormat)} Remaining
             </p>
