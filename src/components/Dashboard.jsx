@@ -55,18 +55,18 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
   const remainingBudget = budget - totalExpenses;
   const remainingProgress = budget > 0 ? (remainingBudget / budget) * 100 : 0;
 
-  // getTextColorClass now returns the text color class directly
+  // MODIFIED: Changed 'text-blue-600' to 'text-green-500'
   const getTextColorClass = () => {
     if (remainingProgress <= 20) return 'text-red-500';
     if (remainingProgress <= 50) return 'text-orange-500';
-    return 'text-blue-600'; // Or a default color like 'text-green-500' if budget is high
+    return 'text-green-500'; // Changed to green
   };
 
-  // This is for the progress bar itself (the background fill)
+  // MODIFIED: Changed 'bg-blue-600' to 'bg-green-500'
   const getProgressBarFillColor = () => {
     if (remainingProgress <= 20) return 'bg-red-500';
     if (remainingProgress <= 50) return 'bg-orange-500';
-    return 'bg-blue-600';
+    return 'bg-green-500'; // Changed to green
   };
 
 
