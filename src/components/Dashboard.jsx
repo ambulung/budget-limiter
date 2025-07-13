@@ -1,6 +1,6 @@
 // src/components/Dashboard.jsx
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react'; // FIXED: Ensure useEffect and useMemo are imported
 import { db } from '../firebase';
 import { doc, getDoc, setDoc, collection, addDoc, onSnapshot, deleteDoc, query, orderBy, updateDoc } from "firebase/firestore";
 import { toast } from 'react-hot-toast';
@@ -54,6 +54,12 @@ const formatDateTime = (timestamp) => {
   return `${formattedDate}, ${formattedTime}`;
 };
 
+// Array of month names for the dropdown
+const monthNames = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December"
+];
+
 
 // --- Main Component ---
 const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updateAppSettings }) => {
@@ -73,26 +79,60 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
   const [newIncomeAmount, setNewIncomeAmount] = useState('');
   const [newIncomeNotes, setNewIncomeNotes] = useState('');
 
-  // REMOVED: budgetAdjustment state
-  // const [budgetAdjustment, setBudgetAdjustment] = useState('');
+  // NEW: State for sorting filters
+  const [selectedMonth, setSelectedMonth] = useState(''); // Empty string for "All Months"
+  const [selectedYear, setSelectedYear] = useState('');   // Empty string for "All Years"
 
   const { budget, currency, numberFormat, appTitle } = appSettings;
 
   const totalExpenses = expenses.reduce((sum, expense) => sum + expense.amount, 0);
   const totalIncome = incomes.reduce((sum, income) => sum + income.amount, 0);
   const remainingBudget = (budget + totalIncome) - totalExpenses;
-  // MODIFIED: remainingProgress calculation toFixed(2)
   const remainingProgress = (budget + totalIncome) > 0
     ? (((budget + totalIncome) - totalExpenses) / (budget + totalIncome) * 100).toFixed(2)
-    : 0; // Keep 0 if total budget is 0 to avoid NaN/Infinity
+    : 0;
+
+  // NEW: Filtered and sorted transactions (using useMemo for performance)
+  const filteredTransactions = useMemo(() => {
+    let transactions = [
+      ...expenses.map(e => ({ ...e, type: 'expense' })),
+      ...incomes.map(i => ({ ...i, type: 'income' }))
+    ];
+
+    // Apply month filter
+    if (selectedMonth !== '') {
+      transactions = transactions.filter(t => {
+        const date = t.createdAt.toDate();
+        return date.getMonth() === parseInt(selectedMonth); // getMonth is 0-indexed
+      });
+    }
+
+    // Apply year filter
+    if (selectedYear !== '') {
+      transactions = transactions.filter(t => {
+        const date = t.createdAt.toDate();
+        return date.getFullYear() === parseInt(selectedYear);
+      });
+    }
+
+    // Sort by most recent first (always applies)
+    return transactions.sort((a, b) => b.createdAt.toDate() - a.createdAt.toDate());
+  }, [expenses, incomes, selectedMonth, selectedYear]);
 
 
-  const allTransactions = [...expenses.map(e => ({ ...e, type: 'expense' })), ...incomes.map(i => ({ ...i, type: 'income' }))]
-    .sort((a, b) => b.createdAt.toDate() - a.createdAt.toDate());
+  // NEW: Generate unique years from transactions for the year dropdown
+  const availableYears = useMemo(() => {
+    const years = new Set();
+    [...expenses, ...incomes].forEach(t => {
+      if (t.createdAt) {
+        years.add(t.createdAt.toDate().getFullYear());
+      }
+    });
+    return Array.from(years).sort((a, b) => b - a); // Sort descending
+  }, [expenses, incomes]);
+
 
   const getTextColorClass = () => {
-    // Note: remainingProgress is now a string due to toFixed(2)
-    // Convert back to number for comparison if needed, or compare as string if consistent
     const progressNum = parseFloat(remainingProgress);
     if (progressNum <= 20) return 'text-red-500';
     if (progressNum <= 50) return 'text-orange-500';
@@ -140,9 +180,6 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
       unsubscribeIncomes();
     };
   }, [user.uid]);
-
-  // REMOVED: handleUndoBudgetChange function
-  // REMOVED: handleUpdateBudget function
 
   const handleSaveSettings = async (settings) => {
     if (!settings.budget || settings.budget <= 0) return toast.error("Please enter a valid budget.");
@@ -484,8 +521,40 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
           {/* --- Consolidated Transactions List --- */}
           <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md">
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-100">All Transactions</h3>
+              <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-100">Transaction History</h3>
               <div className="flex items-center gap-2">
+                {/* NEW: Month and Year Filters */}
+                <div className="relative">
+                  <select
+                    value={selectedMonth}
+                    onChange={(e) => setSelectedMonth(e.target.value)}
+                    className="p-2 pr-8 rounded-lg bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-200 appearance-none"
+                  >
+                    <option value="">All Months</option>
+                    {monthNames.map((month, index) => (
+                      <option key={index} value={index}>{month}</option>
+                    ))}
+                  </select>
+                  <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
+                    <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+                  </div>
+                </div>
+                <div className="relative">
+                  <select
+                    value={selectedYear}
+                    onChange={(e) => setSelectedYear(e.target.value)}
+                    className="p-2 pr-8 rounded-lg bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-200 appearance-none"
+                  >
+                    <option value="">All Years</option>
+                    {availableYears.map(year => (
+                      <option key={year} value={year}>{year}</option>
+                    ))}
+                  </select>
+                  <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
+                    <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+                  </div>
+                </div>
+
                 <button
                   onClick={handleDownloadPdf}
                   className="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
@@ -514,8 +583,8 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
               <span className="text-red-600 dark:text-red-400">Total Expenses: {formatMoney(totalExpenses, currency, numberFormat)}</span>
             </div>
             <ul className="space-y-3 h-[400px] overflow-y-auto pr-2">
-              {allTransactions.length === 0 && <p className="text-gray-500 dark:text-gray-400">No transactions added yet.</p>}
-              {allTransactions.map(transaction => (
+              {filteredTransactions.length === 0 && <p className="text-gray-500 dark:text-gray-400">No transactions match the selected filters.</p>}
+              {filteredTransactions.map(transaction => (
                 <li
                   key={transaction.id}
                   className={`flex justify-between items-start p-3 rounded-lg
