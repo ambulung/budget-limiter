@@ -47,22 +47,18 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
   const [newExpenseAmount, setNewExpenseAmount] = useState('');
   const [newExpenseNotes, setNewExpenseNotes] = useState('');
 
-  // --- NEW: State for the budget adjustment input field ---
   const [budgetAdjustment, setBudgetAdjustment] = useState('');
 
   const { budget, currency, numberFormat, appTitle } = appSettings;
 
   const totalExpenses = expenses.reduce((sum, expense) => sum + expense.amount, 0);
   const remainingBudget = budget - totalExpenses;
-
-  // --- MODIFIED: Progress is now based on the percentage of budget REMAINING ---
   const remainingProgress = budget > 0 ? (remainingBudget / budget) * 100 : 0;
   
-  // --- MODIFIED: Color logic is inverted to reflect the state of remaining budget ---
   const getProgressBarColor = () => {
-    if (remainingProgress <= 20) return 'bg-red-500';      // 20% or less left
-    if (remainingProgress <= 50) return 'bg-orange-500';   // 50% or less left
-    return 'bg-blue-600';                                 // Healthy budget
+    if (remainingProgress <= 20) return 'bg-red-500';
+    if (remainingProgress <= 50) return 'bg-orange-500';
+    return 'bg-blue-600';
   };
 
   useEffect(() => {
@@ -89,16 +85,28 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
     return () => unsubscribe();
   }, [user.uid]);
 
-  // --- NEW: A robust function to handle any budget update ---
+  const handleUndoBudgetChange = async (previousBudget) => {
+    const userDocRef = doc(db, 'users', user.uid);
+    try {
+      const newSettings = { ...appSettings, budget: previousBudget };
+      await setDoc(userDocRef, { budget: previousBudget }, { merge: true });
+      updateAppSettings(newSettings); // Sync parent state
+      toast.success(`Budget restored to ${formatMoney(previousBudget, currency, numberFormat)}`);
+    } catch (error) {
+      toast.error("Failed to undo budget change.");
+      console.error("Undo budget error:", error);
+    }
+  };
+
   const handleUpdateBudget = async (adjustmentAmount) => {
     const amount = Number(adjustmentAmount);
     if (isNaN(amount) || amount === 0) {
       return toast.error("Please enter a valid number.");
     }
     
-    const newBudget = budget + amount;
+    const previousBudget = budget; // Capture budget *before* the change
+    const newBudget = previousBudget + amount;
 
-    // Validation: Don't allow setting a budget that is less than already spent.
     if (newBudget < totalExpenses) {
       return toast.error(`New budget cannot be lower than total expenses (${formatMoney(totalExpenses, currency, numberFormat)}).`);
     }
@@ -107,9 +115,25 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
     try {
       const newSettings = { ...appSettings, budget: newBudget };
       await setDoc(userDocRef, { budget: newBudget }, { merge: true });
-      updateAppSettings(newSettings); // Update state in the parent App component
-      toast.success(`Budget updated to ${formatMoney(newBudget, currency, numberFormat)}!`);
-      setBudgetAdjustment(''); // Clear input field on success
+      updateAppSettings(newSettings);
+      setBudgetAdjustment(''); // Clear input field
+
+      // Show a toast with an Undo button
+      toast((t) => (
+        <span className="flex items-center gap-4">
+          Budget updated.
+          <button 
+            className="px-3 py-1 bg-blue-500 text-white rounded-md font-semibold"
+            onClick={() => {
+              handleUndoBudgetChange(previousBudget); // Call undo with the old value
+              toast.dismiss(t.id); // Dismiss this toast
+            }}
+          >
+            Undo
+          </button>
+        </span>
+      ), { duration: 6000 });
+
     } catch (error) {
       toast.error("Failed to update budget.");
       console.error(error);
@@ -267,7 +291,7 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
 
       <div className="max-w-5xl mx-auto p-4 md:p-8">
         <main>
-          {/* --- MODIFIED: BUDGET STATUS AND CONTROLS SECTION --- */}
+          {/* --- BUDGET STATUS AND CONTROLS SECTION --- */}
           <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md mb-8">
             {/* Top line with total spent vs total budget */}
             <div className="flex justify-between items-center mb-2">
@@ -288,7 +312,7 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
               {formatMoney(remainingBudget, currency, numberFormat)} Remaining
             </p>
             
-            {/* --- NEW: Budget adjustment controls --- */}
+            {/* --- Budget adjustment controls --- */}
             <div className="border-t dark:border-gray-700 pt-4">
               <h4 className="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-2">Adjust Budget</h4>
               <div className="flex flex-col sm:flex-row items-center gap-2">
