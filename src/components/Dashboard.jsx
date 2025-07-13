@@ -513,15 +513,15 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
 
           {/* --- Consolidated Transactions List --- */}
           <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md">
-            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 gap-4"> {/* MODIFIED: Added flex-col, sm:flex-row, gap-4 */}
-              <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-100 mb-2 sm:mb-0">Transaction History</h3> {/* MODIFIED: Added mb-2 sm:mb-0 for spacing */}
-              <div className="flex flex-col sm:flex-row items-center gap-2 w-full sm:w-auto"> {/* MODIFIED: Added flex-col, sm:flex-row, and width classes */}
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 gap-4">
+              <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-100 mb-2 sm:mb-0">Transaction History</h3>
+              <div className="flex flex-col sm:flex-row items-center gap-2 w-full sm:w-auto">
                 {/* Month Filter */}
-                <div className="relative w-full sm:w-auto"> {/* MODIFIED: Added w-full sm:w-auto */}
+                <div className="relative w-full sm:w-auto">
                   <select
                     value={selectedMonth}
                     onChange={(e) => setSelectedMonth(e.target.value)}
-                    className="p-2 pr-8 rounded-lg bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-200 appearance-none w-full" /* MODIFIED: Added w-full */
+                    className="p-2 pr-8 rounded-lg bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-200 appearance-none w-full"
                   >
                     <option value="">All Months</option>
                     {monthNames.map((month, index) => (
@@ -533,11 +533,11 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
                   </div>
                 </div>
                 {/* Year Filter */}
-                <div className="relative w-full sm:w-auto"> {/* MODIFIED: Added w-full sm:w-auto */}
+                <div className="relative w-full sm:w-auto">
                   <select
                     value={selectedYear}
                     onChange={(e) => setSelectedYear(e.target.value)}
-                    className="p-2 pr-8 rounded-lg bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-200 appearance-none w-full" /* MODIFIED: Added w-full */
+                    className="p-2 pr-8 rounded-lg bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-200 appearance-none w-full"
                   >
                     <option value="">All Years</option>
                     {availableYears.map(year => (
@@ -548,29 +548,31 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
                     <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
                   </div>
                 </div>
-
-                <button
-                  onClick={handleDownloadPdf}
-                  className="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors flex-shrink-0" /* MODIFIED: Added flex-shrink-0 */
-                  title="Download Financial Report"
-                >
-                  <DownloadIcon />
-                </button>
-                <button
-                  onClick={() => confirmDeleteAll('expenses')}
-                  className="p-2 rounded-full text-red-500 hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors flex-shrink-0" /* MODIFIED: Added flex-shrink-0 */
-                  title="Delete All Expenses"
-                >
-                  <DeleteAllIcon />
-                </button>
-                <button
-                  onClick={() => confirmDeleteAll('incomes')}
-                  className="p-2 rounded-full text-green-500 hover:bg-green-100 dark:hover:bg-green-900/50 transition-colors flex-shrink-0" /* MODIFIED: Added flex-shrink-0 */
-                  title="Delete All Incomes"
-                >
-                  <DeleteAllIcon />
-                </button>
               </div>
+            </div>
+            {/* NEW: Horizontal and Left-aligned Action Buttons */}
+            <div className="flex flex-wrap gap-2 mb-4 justify-start"> {/* flex-wrap for small screens, justify-start for left-align */}
+              <button
+                onClick={handleDownloadPdf}
+                className="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors flex-shrink-0"
+                title="Download Financial Report"
+              >
+                <DownloadIcon />
+              </button>
+              <button
+                onClick={() => confirmDeleteAll('expenses')}
+                className="p-2 rounded-full text-red-500 hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors flex-shrink-0"
+                title="Delete All Expenses"
+              >
+                <DeleteAllIcon />
+              </button>
+              <button
+                onClick={() => confirmDeleteAll('incomes')}
+                className="p-2 rounded-full text-green-500 hover:bg-green-100 dark:hover:bg-green-900/50 transition-colors flex-shrink-0"
+                title="Delete All Incomes"
+              >
+                <DeleteAllIcon />
+              </button>
             </div>
             <div className="flex justify-between text-lg font-semibold mb-3">
               <span className="text-green-600 dark:text-green-400">Total Income: {formatMoney(totalIncome, currency, numberFormat)}</span>
