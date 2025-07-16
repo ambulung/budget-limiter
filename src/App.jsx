@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import { auth, db } from './firebase';
-import { doc, getDoc } from "firebase/firestore";
+import { doc, getDoc, setDoc } from "firebase/firestore"; // Added setDoc for saving settings
 import { getFunctions, httpsCallable } from "firebase/functions";
 import { Toaster, toast } from 'react-hot-toast';
 
@@ -10,17 +10,20 @@ import Dashboard from './components/Dashboard';
 import Login from './components/Login';
 import Footer from './components/Footer';
 import ConfirmationModal from './components/ConfirmationModal';
+import SetupModal from './components/SetupModal'; // Make sure SetupModal is imported
 
 function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showSetupModal, setShowSetupModal] = useState(false);
   const [showConfirmEndSessionModal, setShowConfirmEndSessionModal] = useState(false);
+
   const [appSettings, setAppSettings] = useState({
     budget: 1000,
     currency: '$',
     numberFormat: 'comma',
     appTitle: 'My Expense Tracker',
+    isNewUser: false,
   });
 
   useEffect(() => {
@@ -33,7 +36,9 @@ function App() {
           currency: '$',
           numberFormat: 'comma',
           appTitle: 'My Expense Tracker',
+          isNewUser: false,
         });
+        setShowSetupModal(false);
       }
     });
     return () => unsubscribe();
@@ -43,7 +48,7 @@ function App() {
     if (!user) {
       setLoading(false);
       return;
-    };
+    }
 
     const userDocRef = doc(db, 'userSettings', user.uid);
     const fetchData = async () => {
@@ -56,14 +61,18 @@ function App() {
             currency: userData.currency || '$',
             numberFormat: userData.numberFormat || 'comma',
             appTitle: userData.appTitle || 'My Expense Tracker',
+            isNewUser: false,
           });
+          setShowSetupModal(false);
         } else {
           setAppSettings({
             budget: 1000,
             currency: '$',
             numberFormat: 'comma',
             appTitle: 'My Expense Tracker',
+            isNewUser: true,
           });
+          setShowSetupModal(true);
         }
       } catch (error) {
         console.error("Failed to fetch user settings:", error);
@@ -75,6 +84,21 @@ function App() {
 
     fetchData();
   }, [user]);
+
+  const handleSaveSettings = async (settings) => {
+    if (!user) return;
+
+    try {
+      const userDocRef = doc(db, 'userSettings', user.uid);
+      await setDoc(userDocRef, settings, { merge: true });
+      setAppSettings({ ...settings, isNewUser: false });
+      setShowSetupModal(false);
+      toast.success("Settings saved successfully!");
+    } catch (error) {
+      console.error("Error saving settings:", error);
+      toast.error("Failed to save settings.");
+    }
+  };
 
   const handleDeleteAccount = async () => {
     setShowSetupModal(false);
@@ -140,14 +164,20 @@ function App() {
 
       <main className="flex-grow">
         {user ? (
-          <Dashboard
-            user={user}
-            showSetupModal={showSetupModal}
-            setShowSetupModal={setShowSetupModal}
-            appSettings={appSettings}
-            updateAppSettings={setAppSettings}
-            onDeleteAccount={handleDeleteAccount}
-          />
+          <>
+            <Dashboard
+              user={user}
+              appSettings={appSettings}
+            />
+            <SetupModal
+              isOpen={showSetupModal}
+              onClose={() => setShowSetupModal(false)}
+              onSave={handleSaveSettings}
+              user={user}
+              initialSettings={appSettings}
+              onDeleteAccount={handleDeleteAccount}
+            />
+          </>
         ) : (
           <Login />
         )}
