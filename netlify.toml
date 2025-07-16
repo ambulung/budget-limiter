@@ -1,0 +1,5 @@
+[[redirects]]
+  from = "https://budgetlimit.netlify.app/*"
+  to = "https://budgetlimit.store/:splat"
+  status = 301
+  force = true
