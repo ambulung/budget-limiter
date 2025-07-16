@@ -1,12 +1,10 @@
-// src/App.jsx
-
 import React, { useState, useEffect } from 'react';
-import { onAuthStateChanged, signOut, deleteUser } from "firebase/auth";
+import { onAuthStateChanged, signOut } from "firebase/auth";
 import { auth, db } from './firebase';
 import { doc, getDoc } from "firebase/firestore";
+import { getFunctions, httpsCallable } from "firebase/functions";
 import { Toaster, toast } from 'react-hot-toast';
 
-// Component Imports
 import Header from './components/Header';
 import Dashboard from './components/Dashboard';
 import Login from './components/Login';
@@ -18,7 +16,6 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [showSetupModal, setShowSetupModal] = useState(false);
   const [showConfirmEndSessionModal, setShowConfirmEndSessionModal] = useState(false);
-
   const [appSettings, setAppSettings] = useState({
     budget: 1000,
     currency: '$',
@@ -44,10 +41,11 @@ function App() {
 
   useEffect(() => {
     if (!user) {
+      setLoading(false);
       return;
     };
 
-    const userDocRef = doc(db, 'users', user.uid);
+    const userDocRef = doc(db, 'userSettings', user.uid);
     const fetchData = async () => {
       try {
         const docSnap = await getDoc(userDocRef);
@@ -78,6 +76,25 @@ function App() {
     fetchData();
   }, [user]);
 
+  const handleDeleteAccount = async () => {
+    setShowSetupModal(false);
+    setShowConfirmEndSessionModal(false);
+    const functions = getFunctions();
+    const deleteUserAccount = httpsCallable(functions, 'deleteUserAccount');
+    
+    try {
+      toast.loading('Deleting your account...');
+      const result = await deleteUserAccount();
+      toast.dismiss();
+      toast.success("Your account and all data have been deleted.");
+      console.log(result.data.message);
+    } catch (error) {
+      toast.dismiss();
+      console.error("Error deleting account:", error);
+      toast.error(error.message || "Failed to delete account. Please try again.");
+    }
+  };
+
   const handleLogout = () => {
     if (auth.currentUser && auth.currentUser.isAnonymous) {
       setShowConfirmEndSessionModal(true);
@@ -89,17 +106,8 @@ function App() {
     }
   };
 
-  const handleConfirmEndSession = async () => {
-    setShowConfirmEndSessionModal(false);
-    if (auth.currentUser && auth.currentUser.isAnonymous) {
-      try {
-        await deleteUser(auth.currentUser);
-        toast.success("Guest session ended and data deleted.");
-      } catch (error) {
-        console.error("Error deleting anonymous user:", error);
-        toast.error("Failed to end guest session.");
-      }
-    }
+  const handleConfirmEndSession = () => {
+    handleDeleteAccount();
   };
 
   if (loading) {
@@ -111,7 +119,6 @@ function App() {
   }
 
   return (
-    // This div already has min-h-screen and flex flex-col, which is good
     <div className="min-h-screen bg-slate-100 dark:bg-gray-900 flex flex-col">
       <Toaster position="top-center" reverseOrder={false} />
 
@@ -131,7 +138,6 @@ function App() {
         />
       )}
 
-      {/* --- MODIFIED: Added flex-grow to the main element --- */}
       <main className="flex-grow">
         {user ? (
           <Dashboard
@@ -140,6 +146,7 @@ function App() {
             setShowSetupModal={setShowSetupModal}
             appSettings={appSettings}
             updateAppSettings={setAppSettings}
+            onDeleteAccount={handleDeleteAccount}
           />
         ) : (
           <Login />

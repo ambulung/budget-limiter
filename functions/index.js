@@ -1,32 +1,43 @@
-/**
- * Import function triggers from their respective submodules:
- *
- * const {onCall} = require("firebase-functions/v2/https");
- * const {onDocumentWritten} = require("firebase-functions/v2/firestore");
- *
- * See a full list of supported triggers at https://firebase.google.com/docs/functions
- */
+// functions/index.js
 
-const {setGlobalOptions} = require("firebase-functions");
-const {onRequest} = require("firebase-functions/https");
-const logger = require("firebase-functions/logger");
+const { onCall, HttpsError } = require("firebase-functions/v2/https");
+const admin = require("firebase-admin");
 
-// For cost control, you can set the maximum number of containers that can be
-// running at the same time. This helps mitigate the impact of unexpected
-// traffic spikes by instead downgrading performance. This limit is a
-// per-function limit. You can override the limit for each function using the
-// `maxInstances` option in the function's options, e.g.
-// `onRequest({ maxInstances: 5 }, (req, res) => { ... })`.
-// NOTE: setGlobalOptions does not apply to functions using the v1 API. V1
-// functions should each use functions.runWith({ maxInstances: 10 }) instead.
-// In the v1 API, each function can only serve one request per container, so
-// this will be the maximum concurrent request count.
-setGlobalOptions({ maxInstances: 10 });
+admin.initializeApp();
 
-// Create and deploy your first functions
-// https://firebase.google.com/docs/functions/get-started
+exports.deleteUserAccount = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError(
+      "unauthenticated",
+      "You must be logged in to delete an account."
+    );
+  }
 
-// exports.helloWorld = onRequest((request, response) => {
-//   logger.info("Hello logs!", {structuredData: true});
-//   response.send("Hello from Firebase!");
-// });
+  const uid = request.auth.uid;
+  const db = admin.firestore();
+
+  try {
+    const userDocRef = db.collection("userSettings").doc(uid);
+    const transactionsRef = userDocRef.collection("transactions");
+    const transactionsSnapshot = await transactionsRef.get();
+
+    if (!transactionsSnapshot.empty) {
+        const batch = db.batch();
+        transactionsSnapshot.docs.forEach(doc => {
+            batch.delete(doc.ref);
+        });
+        await batch.commit();
+    }
+    
+    await userDocRef.delete();
+    await admin.auth().deleteUser(uid);
+
+    return { message: `Successfully deleted user ${uid} and all associated data.` };
+  } catch (error) {
+    console.error("Error deleting user account:", uid, error);
+    throw new HttpsError(
+      "internal",
+      "An error occurred while deleting the account."
+    );
+  }
+});

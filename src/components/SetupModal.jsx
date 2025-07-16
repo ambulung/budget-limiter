@@ -2,38 +2,27 @@
 
 import React, { useState, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
-// REMOVED: import { storage } from '../firebase';
-// REMOVED: import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
-const SetupModal = ({ isOpen, onSave, onClose, user, initialSettings }) => {
-  // State for form inputs
+const SetupModal = ({ isOpen, onSave, onClose, user, initialSettings, onDeleteAccount }) => {
   const [title, setTitle] = useState('');
   const [currency, setCurrency] = useState('$');
   const [customCurrencySymbol, setCustomCurrencySymbol] = useState('');
-  // REMOVED: selectedFile state
-  // REMOVED: displayIconUrl state
-  // REMOVED: isUploading state
   const [numberFormat, setNumberFormat] = useState('comma');
-
-  // Split budget state into raw number and display string
   const [rawBudget, setRawBudget] = useState(1000);
   const [displayBudget, setDisplayBudget] = useState('1000.00');
 
-  // When the modal opens, populate the form with existing settings or defaults
   useEffect(() => {
     if (isOpen) {
       const initialBudgetValue = initialSettings.budget || 1000;
 
-      setTitle(initialSettings.appTitle || ''); // Still use appTitle
+      setTitle(initialSettings.appTitle || '');
       setRawBudget(initialBudgetValue);
       setDisplayBudget(Number(initialBudgetValue).toFixed(2));
-
-      // REMOVED: displayIconUrl initialization
-
       setNumberFormat(initialSettings.numberFormat || 'comma');
 
       const standardCurrencies = ['$', '€', '£', '¥', '₹'];
       const initialCurrency = initialSettings.currency || '$';
+
       if (standardCurrencies.includes(initialCurrency)) {
         setCurrency(initialCurrency);
         setCustomCurrencySymbol('');
@@ -44,7 +33,6 @@ const SetupModal = ({ isOpen, onSave, onClose, user, initialSettings }) => {
     }
   }, [isOpen, initialSettings]);
 
-  // Handlers for the budget input field
   const handleBudgetChange = (e) => {
     setDisplayBudget(e.target.value);
     const parsedValue = parseFloat(e.target.value);
@@ -55,10 +43,7 @@ const SetupModal = ({ isOpen, onSave, onClose, user, initialSettings }) => {
     setDisplayBudget(rawBudget.toFixed(2));
   };
 
-  // REMOVED: handleFileSelect function
-  // REMOVED: uploadIconToFirebase function
-
-  const handleSave = async (e) => { // Still async, though no longer waiting for upload
+  const handleSave = async (e) => {
     e.preventDefault();
 
     let finalCurrency = currency;
@@ -70,21 +55,23 @@ const SetupModal = ({ isOpen, onSave, onClose, user, initialSettings }) => {
       finalCurrency = customCurrencySymbol.trim();
     }
 
-    // REMOVED: Image upload logic
-    // REMOVED: finalAppIconUrl variable
-
     if (rawBudget <= 0) {
       toast.error("Budget must be a positive number.");
       return;
     }
 
-    // MODIFIED: Do NOT include appIcon in the saved settings
     onSave({
       appTitle: title,
       budget: rawBudget,
       currency: finalCurrency,
       numberFormat: numberFormat,
     });
+  };
+
+  const handleDelete = () => {
+    if (window.confirm('Are you sure you want to delete your account? This will permanently erase all your data and cannot be undone.')) {
+        onDeleteAccount();
+    }
   };
 
   if (!isOpen) return null;
@@ -106,8 +93,6 @@ const SetupModal = ({ isOpen, onSave, onClose, user, initialSettings }) => {
             <label className="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">App Title</label>
             <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} className="w-full p-3 bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
           </div>
-
-          {/* --- REMOVED: Icon Upload Section --- */}
 
           <div>
             <label className="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Your Budget</label>
@@ -154,9 +139,21 @@ const SetupModal = ({ isOpen, onSave, onClose, user, initialSettings }) => {
           </div>
 
           <button type="submit" className="p-3 w-full bg-blue-600 text-white font-bold rounded-lg shadow-md hover:bg-blue-700 transition-all" >
-            Save and Continue
+            Save Settings
           </button>
         </form>
+
+        <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
+           <h3 className="text-lg font-semibold text-red-600 dark:text-red-500">Danger Zone</h3>
+           <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 mb-3">Deleting your account is a permanent action.</p>
+           <button 
+                onClick={handleDelete}
+                type="button"
+                className="w-full p-2 bg-red-600 text-white font-bold rounded-lg shadow-md hover:bg-red-700 transition-all"
+            >
+                Delete My Account
+           </button>
+        </div>
       </div>
     </div>
   );
