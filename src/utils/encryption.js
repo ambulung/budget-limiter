@@ -1,22 +1,22 @@
 // src/utils/encryption.js
 
 import CryptoJS from 'crypto-js';
-import { toast } from 'react-hot-toast'; // Assuming you have toast available globally or pass it
+import { toast } from 'react-hot-toast';
 
-// IMPORTANT: This key MUST be the same as the one used for encryption.
-// It's loaded from the environment variable.
-const ENCRYPTION_SECRET_KEY = process.env.REACT_APP_ENCRYPTION_KEY;
+// IMPORTANT CHANGE HERE: Use import.meta.env and VITE_ prefix
+const ENCRYPTION_SECRET_KEY = import.meta.env.VITE_ENCRYPTION_KEY;
 
 // Optional: Add a warning in development if the key isn't set
+// Note: process.env.NODE_ENV is still standard for Vite
 if (process.env.NODE_ENV === 'development' && !ENCRYPTION_SECRET_KEY) {
-  console.warn("WARNING: REACT_APP_ENCRYPTION_KEY is not set. Encryption/Decryption might not function correctly.");
+  console.warn("WARNING: VITE_ENCRYPTION_KEY is not set in your .env file. Encryption/Decryption might not function correctly.");
 }
 
 // Helper function to encrypt a number
 export const encryptBudget = (budget, key = ENCRYPTION_SECRET_KEY) => {
   if (typeof budget !== 'number' || !key) {
     console.error("Encryption failed: Budget must be a number and key must be provided.");
-    toast.error("Failed to encrypt budget data."); // Using toast here
+    toast.error("Failed to encrypt budget data.");
     return null;
   }
   try {
@@ -32,7 +32,7 @@ export const encryptBudget = (budget, key = ENCRYPTION_SECRET_KEY) => {
 export const decryptBudget = (encryptedBudget, key = ENCRYPTION_SECRET_KEY) => {
   if (!encryptedBudget || typeof encryptedBudget !== 'string' || !key) {
     // console.warn("Decryption skipped: Encrypted budget is invalid or key is missing.");
-    return null; // Return null if there's nothing to decrypt or key is missing
+    return null;
   }
   try {
     const bytes = CryptoJS.AES.decrypt(encryptedBudget, key);
