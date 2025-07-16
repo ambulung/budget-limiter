@@ -5,6 +5,9 @@ import { doc, getDoc, setDoc } from "firebase/firestore";
 import { getFunctions, httpsCallable } from "firebase/functions";
 import { Toaster, toast } from 'react-hot-toast';
 
+// Import the decryptBudget function from your new utility file
+import { decryptBudget } from './utils/encryption';
+
 import Header from './components/Header';
 import Dashboard from './components/Dashboard';
 import Login from './components/Login';
@@ -32,6 +35,7 @@ function App() {
       setUser(currentUser);
       if (!currentUser) {
         setLoading(false);
+        // Reset settings to default if no user is logged in
         setAppSettings({
           budget: 1000,
           currency: '$',
@@ -59,8 +63,16 @@ function App() {
         const docSnap = await getDoc(userDocRef);
         if (docSnap.exists()) {
           const userData = docSnap.data();
+
+          // --- IMPORTANT CHANGE HERE ---
+          // Attempt to decrypt the budget when fetching it from Firestore
+          const decryptedBudget = decryptBudget(userData.budget);
+          // Use the decrypted budget, or fallback to 1000 if decryption fails or data is missing
+          const effectiveBudget = typeof decryptedBudget === 'number' ? decryptedBudget : 1000;
+          // --- END IMPORTANT CHANGE ---
+
           setAppSettings({
-            budget: userData.budget || 1000,
+            budget: effectiveBudget, // Use the decrypted/effective budget
             currency: userData.currency || '$',
             numberFormat: userData.numberFormat || 'comma',
             appTitle: userData.appTitle || 'My Expense Tracker',
@@ -68,6 +80,7 @@ function App() {
           });
           setShowSetupModal(false);
         } else {
+          // If no settings exist, it's a new user, show setup modal
           setAppSettings({
             budget: 1000,
             currency: '$',
@@ -86,15 +99,26 @@ function App() {
     };
 
     fetchData();
-  }, [user]);
+  }, [user]); // Re-run when user changes
 
   const handleSaveSettings = async (settings) => {
     if (!user) return;
 
     try {
       const userDocRef = doc(db, 'userSettings', user.uid);
+      // 'settings' object received here already has the encrypted budget from SetupModal
       await setDoc(userDocRef, settings, { merge: true });
-      setAppSettings({ ...settings, isNewUser: false });
+      
+      // Update appSettings state with the *decrypted* budget for immediate use in app
+      // This is necessary because the Dashboard needs the actual number, not the encrypted string.
+      const decryptedBudgetForState = decryptBudget(settings.budget);
+      const effectiveBudgetForState = typeof decryptedBudgetForState === 'number' ? decryptedBudgetForState : 1000;
+
+      setAppSettings({
+        ...settings,
+        budget: effectiveBudgetForState, // Set the decrypted budget here
+        isNewUser: false
+      });
       setShowSetupModal(false);
       toast.success("Settings saved successfully!");
     } catch (error) {
@@ -108,14 +132,14 @@ function App() {
 
     const functions = getFunctions();
     const deleteUserAccountCallable = httpsCallable(functions, 'deleteUserAccount');
-    
+
     try {
       toast.loading('Deleting your account...');
       await deleteUserAccountCallable();
       toast.dismiss();
       toast.success("Your account and all data have been deleted.");
       // Explicitly sign out, though auth state listener should also handle it
-      await signOut(auth); 
+      await signOut(auth);
     } catch (error) {
       toast.dismiss();
       console.error("Error deleting account:", error);

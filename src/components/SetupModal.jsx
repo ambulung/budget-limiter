@@ -1,7 +1,11 @@
 // src/components/SetupModal.jsx
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { toast } from 'react-hot-toast';
+// Import from the new utility file
+import { encryptBudget, decryptBudget } from '../utils/encryption';
+
+// ... (no more ENCRYPTION_SECRET_KEY or encryptBudget/decryptBudget functions here) ...
 
 const SetupModal = ({ isOpen, onSave, onClose, user, initialSettings, onDeleteAccount }) => {
   const [title, setTitle] = useState('');
@@ -11,13 +15,25 @@ const SetupModal = ({ isOpen, onSave, onClose, user, initialSettings, onDeleteAc
   const [rawBudget, setRawBudget] = useState(1000);
   const [displayBudget, setDisplayBudget] = useState('1000.00');
 
+  // Memoize the decryption function from the utility file
+  const memoizedDecryptBudget = useCallback((encryptedBudget) => {
+    return decryptBudget(encryptedBudget); // Key is now passed internally by the util function
+  }, []);
+
   useEffect(() => {
     if (isOpen) {
-      const initialBudgetValue = initialSettings.budget || 1000;
+      const decryptedBudgetValue = initialSettings.budget
+        ? memoizedDecryptBudget(initialSettings.budget)
+        : null;
+
+      const effectiveBudgetValue = typeof decryptedBudgetValue === 'number'
+        ? decryptedBudgetValue
+        : 1000;
 
       setTitle(initialSettings.appTitle || '');
-      setRawBudget(initialBudgetValue);
-      setDisplayBudget(Number(initialBudgetValue).toFixed(2));
+      setRawBudget(effectiveBudgetValue);
+      setDisplayBudget(Number(effectiveBudgetValue).toFixed(2));
+
       setNumberFormat(initialSettings.numberFormat || 'comma');
 
       const standardCurrencies = ['$', '€', '£', '¥', '₹'];
@@ -31,7 +47,7 @@ const SetupModal = ({ isOpen, onSave, onClose, user, initialSettings, onDeleteAc
         setCustomCurrencySymbol(initialCurrency);
       }
     }
-  }, [isOpen, initialSettings]);
+  }, [isOpen, initialSettings, memoizedDecryptBudget]);
 
   const handleBudgetChange = (e) => {
     setDisplayBudget(e.target.value);
@@ -60,18 +76,24 @@ const SetupModal = ({ isOpen, onSave, onClose, user, initialSettings, onDeleteAc
       return;
     }
 
+    // Use the encryptBudget function from the utility file
+    const encryptedBudget = encryptBudget(rawBudget); // Key is now passed internally
+
+    if (encryptedBudget === null) {
+      toast.error("Failed to encrypt budget. Please check configuration and try again.");
+      return;
+    }
+
     onSave({
       appTitle: title,
-      budget: rawBudget,
+      budget: encryptedBudget,
       currency: finalCurrency,
       numberFormat: numberFormat,
     });
   };
 
   const handleDeleteButtonClick = () => {
-    // This now directly calls the onDeleteAccount prop,
-    // which in App.jsx is set to handleTriggerDeleteConfirmation
-    onDeleteAccount(); 
+    onDeleteAccount();
   };
 
   if (!isOpen) return null;
@@ -146,7 +168,7 @@ const SetupModal = ({ isOpen, onSave, onClose, user, initialSettings, onDeleteAc
         <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
            <h3 className="text-lg font-semibold text-red-600 dark:text-red-500">Danger Zone</h3>
            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 mb-3">Deleting your account is a permanent action.</p>
-           <button 
+           <button
                 onClick={handleDeleteButtonClick}
                 type="button"
                 className="w-full p-2 bg-red-600 text-white font-bold rounded-lg shadow-md hover:bg-red-700 transition-all"
