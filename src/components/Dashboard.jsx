@@ -1,5 +1,3 @@
-// src/components/Dashboard.jsx
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { db } from '../firebase';
 import { doc, getDoc, setDoc, collection, addDoc, onSnapshot, deleteDoc, query, orderBy, updateDoc } from "firebase/firestore";
@@ -7,19 +5,16 @@ import { toast } from 'react-hot-toast';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
-// Component Imports
 import SetupModal from './SetupModal';
 import EditExpenseModal from './EditExpenseModal';
 import EditIncomeModal from './EditIncomeModal';
 import ConfirmationModal from './ConfirmationModal';
 
-// --- SVG Icons ---
 const EditIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.5L15.232 5.232z" /></svg> );
 const DeleteIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-4v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg> );
 const DownloadIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg> );
-const DeleteAllIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-4v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg> );
+const DeleteAllIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeLineWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-4v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg> );
 
-// --- Helper Functions ---
 const formatMoney = (amount, currencySymbol, numberFormat) => {
   const num = Number(amount);
   if (isNaN(num)) return `${currencySymbol || '$'}0.00`;
@@ -51,16 +46,12 @@ const formatDateTime = (timestamp) => {
   return `${formattedDate}, ${formattedTime}`;
 };
 
-// Array of month names for the dropdown
 const monthNames = [
   "January", "February", "March", "April", "May", "June",
   "July", "August", "September", "October", "November", "December"
 ];
 
-
-// --- Main Component ---
-const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updateAppSettings }) => {
-  const [isNewUser, setIsNewUser] = useState(false);
+const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updateAppSettings, onDeleteAccount }) => {
   const [editingExpense, setEditingExpense] = useState(null);
   const [editingIncome, setEditingIncome] = useState(null);
   const [showConfirmDeleteAllModal, setShowConfirmDeleteAllModal] = useState(false);
@@ -69,16 +60,16 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
   const [expenses, setExpenses] = useState([]);
   const [newExpenseDesc, setNewExpenseDesc] = useState('');
   const [newExpenseAmount, setNewExpenseAmount] = useState('');
-  const [newExpenseNotes, setNewExpenseNotes] = useState(''); // Corrected initialization
+  const [newExpenseNotes, setNewExpenseNotes] = useState('');
 
   const [incomes, setIncomes] = useState([]);
   const [newIncomeDesc, setNewIncomeDesc] = useState('');
   const [newIncomeAmount, setNewIncomeAmount] = useState('');
-  const [newIncomeNotes, setNewIncomeNotes] = useState(''); // Corrected initialization
+  const [newIncomeNotes, setNewIncomeNotes] = useState('');
 
   const [selectedMonth, setSelectedMonth] = useState('');
   const [selectedYear, setSelectedYear] = useState('');
-  const [searchTerm, setSearchTerm] = useState(''); // New state for search term
+  const [searchTerm, setSearchTerm] = useState('');
 
   const { budget, currency, numberFormat, appTitle } = appSettings;
 
@@ -109,7 +100,6 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
       });
     }
 
-    // Apply search filter
     if (searchTerm.trim() !== '') {
       const lowerCaseSearchTerm = searchTerm.toLowerCase();
       transactions = transactions.filter(t =>
@@ -119,8 +109,7 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
     }
 
     return transactions.sort((a, b) => b.createdAt.toDate() - a.createdAt.toDate());
-  }, [expenses, incomes, selectedMonth, selectedYear, searchTerm]); // Add searchTerm to dependency array
-
+  }, [expenses, incomes, selectedMonth, selectedYear, searchTerm]);
 
   const availableYears = useMemo(() => {
     const years = new Set();
@@ -131,7 +120,6 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
     });
     return Array.from(years).sort((a, b) => b - a);
   }, [expenses, incomes]);
-
 
   const getTextColorClass = () => {
     const progressNum = parseFloat(remainingProgress);
@@ -147,30 +135,15 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
     return 'bg-green-500';
   };
 
-
-  useEffect(() => {
-    const userDocRef = doc(db, 'users', user.uid);
-    const checkIsNew = async () => {
-        const docSnap = await getDoc(userDocRef);
-        if (!docSnap.exists()) {
-            setIsNewUser(true);
-            setShowSetupModal(true);
-        } else {
-            setIsNewUser(false);
-        }
-    };
-    checkIsNew();
-  }, [user.uid, setShowSetupModal]);
-
   useEffect(() => {
     if (!user.uid) return;
-    const expensesColRef = collection(db, 'users', user.uid, 'expenses');
+    const expensesColRef = collection(db, 'userSettings', user.uid, 'transactions', 'expenses');
     const qExpenses = query(expensesColRef, orderBy('createdAt', 'desc'));
     const unsubscribeExpenses = onSnapshot(qExpenses, (snapshot) => {
       setExpenses(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     });
 
-    const incomesColRef = collection(db, 'users', user.uid, 'incomes');
+    const incomesColRef = collection(db, 'userSettings', user.uid, 'transactions', 'incomes');
     const qIncomes = query(incomesColRef, orderBy('createdAt', 'desc'));
     const unsubscribeIncomes = onSnapshot(qIncomes, (snapshot) => {
       setIncomes(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
@@ -183,14 +156,20 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
   }, [user.uid]);
 
   const handleSaveSettings = async (settings) => {
-    if (!settings.budget || settings.budget <= 0) return toast.error("Please enter a valid budget.");
-    const userDocRef = doc(db, 'users', user.uid);
+    if (!settings.budget || settings.budget <= 0) {
+      toast.error("Please enter a valid budget.");
+      return;
+    }
+    const userDocRef = doc(db, 'userSettings', user.uid);
     try {
       await setDoc(userDocRef, settings, { merge: true });
       updateAppSettings(prev => ({...prev, ...settings}));
       setShowSetupModal(false);
       toast.success("Settings saved!");
-    } catch (error) { toast.error("Failed to save settings."); console.error(error); }
+    } catch (error) {
+      toast.error("Failed to save settings.");
+      console.error(error);
+    }
   };
 
   const handleAddExpense = async (e) => {
@@ -202,7 +181,7 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
       return;
     }
 
-    const expensesColRef = collection(db, 'users', user.uid, 'expenses');
+    const expensesColRef = collection(db, 'userSettings', user.uid, 'transactions', 'expenses');
     try {
       await addDoc(expensesColRef, {
         description: newExpenseDesc.trim(),
@@ -229,7 +208,7 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
       return;
     }
 
-    const incomesColRef = collection(db, 'users', user.uid, 'incomes');
+    const incomesColRef = collection(db, 'userSettings', user.uid, 'transactions', 'incomes');
     try {
       await addDoc(incomesColRef, {
         description: newIncomeDesc.trim(),
@@ -248,7 +227,7 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
   };
 
   const handleUpdateExpense = async (updatedExpense) => {
-    const expenseDocRef = doc(db, 'users', user.uid, 'expenses', updatedExpense.id);
+    const expenseDocRef = doc(db, 'userSettings', user.uid, 'transactions', 'expenses', updatedExpense.id);
     try {
       await updateDoc(expenseDocRef, {
         description: updatedExpense.description,
@@ -257,11 +236,14 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
       });
       toast.success("Expense updated!");
       setEditingExpense(null);
-    } catch (error) { toast.error("Failed to update expense."); console.error(error); }
+    } catch (error) {
+      toast.error("Failed to update expense.");
+      console.error(error);
+    }
   };
 
   const handleUpdateIncome = async (updatedIncome) => {
-    const incomeDocRef = doc(db, 'users', user.uid, 'incomes', updatedIncome.id);
+    const incomeDocRef = doc(db, 'userSettings', user.uid, 'transactions', 'incomes', updatedIncome.id);
     try {
       await updateDoc(incomeDocRef, {
         description: updatedIncome.description,
@@ -278,8 +260,8 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
 
   const handleDeleteTransaction = async (transaction) => {
     const docRef = transaction.type === 'expense'
-      ? doc(db, 'users', user.uid, 'expenses', transaction.id)
-      : doc(db, 'users', user.uid, 'incomes', transaction.id);
+      ? doc(db, 'userSettings', user.uid, 'transactions', 'expenses', transaction.id)
+      : doc(db, 'userSettings', user.uid, 'transactions', 'incomes', transaction.id);
 
     try {
       const docSnap = await getDoc(docRef);
@@ -294,18 +276,24 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
           </button>
         </span>
       ), { duration: 6000 });
-    } catch (error) { toast.error(`Failed to delete ${transaction.type}.`); console.error(error); }
+    } catch (error) {
+      toast.error(`Failed to delete ${transaction.type}.`);
+      console.error(error);
+    }
   };
 
   const handleUndoDelete = async (idToRestore, dataToRestore, transactionType) => {
     if (!idToRestore || !dataToRestore || !transactionType) return;
     const docRef = transactionType === 'expense'
-      ? doc(db, 'users', user.uid, 'expenses', idToRestore)
-      : doc(db, 'users', user.uid, 'incomes', idToRestore);
+      ? doc(db, 'userSettings', user.uid, 'transactions', 'expenses', idToRestore)
+      : doc(db, 'userSettings', user.uid, 'transactions', 'incomes', idToRestore);
     try {
       await setDoc(docRef, dataToRestore);
       toast.success(`${transactionType === 'expense' ? 'Expense' : 'Income'} restored!`);
-    } catch (error) { toast.error(`Failed to restore ${transactionType}.`); console.error(error); }
+    } catch (error) {
+      toast.error(`Failed to restore ${transactionType}.`);
+      console.error(error);
+    }
   };
 
   const handleDownloadPdf = () => {
@@ -367,7 +355,6 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
       finalY += 10;
     }
 
-
     doc.setFontSize(12);
     doc.text(`Initial Budget: ${formatMoney(budget, currency, numberFormat)}`, 14, finalY + 10);
     doc.text(`Net Balance: ${formatMoney(budget + totalIncome - totalExpenses, currency, numberFormat)}`, 14, finalY + 17);
@@ -386,7 +373,7 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
     if (!confirmDeleteAllType) return;
 
     let deletionPromise;
-    let collectionRef;
+    let collectionPath;
     let successMsg;
     let errorMsg;
 
@@ -394,16 +381,16 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
       if (expenses.length === 0) {
         return toast.error("There are no expenses to delete.");
       }
-      collectionRef = collection(db, 'users', user.uid, 'expenses');
-      deletionPromise = Promise.all(expenses.map(expense => deleteDoc(doc(collectionRef, expense.id))));
+      collectionPath = collection(db, 'userSettings', user.uid, 'transactions', 'expenses');
+      deletionPromise = Promise.all(expenses.map(expense => deleteDoc(doc(collectionPath, expense.id))));
       successMsg = 'All expenses deleted successfully!';
       errorMsg = 'Failed to delete all expenses.';
     } else if (confirmDeleteAllType === 'incomes') {
       if (incomes.length === 0) {
         return toast.error("There are no incomes to delete.");
       }
-      collectionRef = collection(db, 'users', user.uid, 'incomes');
-      deletionPromise = Promise.all(incomes.map(income => deleteDoc(doc(collectionRef, income.id))));
+      collectionPath = collection(db, 'userSettings', user.uid, 'transactions', 'incomes');
+      deletionPromise = Promise.all(incomes.map(income => deleteDoc(doc(collectionPath, income.id))));
       successMsg = 'All incomes deleted successfully!';
       errorMsg = 'Failed to delete all incomes.';
     } else {
@@ -416,8 +403,7 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
       error: errorMsg,
     });
     setConfirmDeleteAllType(null);
-  };
-
+  }
 
   return (
     <>
@@ -426,7 +412,8 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
         onSave={handleSaveSettings}
         onClose={() => setShowSetupModal(false)}
         user={user}
-        initialSettings={{ ...appSettings, isNewUser }}
+        initialSettings={appSettings}
+        onDeleteAccount={onDeleteAccount}
       />
       <EditExpenseModal
         isOpen={!!editingExpense}
@@ -449,7 +436,6 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
         confirmButtonText={`Yes, Delete All ${confirmDeleteAllType === 'expenses' ? 'Expenses' : 'Incomes'}`}
       />
 
-      {/* Increased horizontal padding for mobile */}
       <div className="max-w-5xl mx-auto p-4 md:p-8 sm:px-6 px-4">
         <main>
           <h1
@@ -462,7 +448,6 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
           <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md mb-8">
             <div className="flex justify-between items-center mb-2">
               <div className={`text-2xl font-bold ${getTextColorClass()}`}>
-                {/* Adjusted font size for better mobile fit */}
                 <span className="text-xl sm:text-2xl">{formatMoney(totalExpenses, currency, numberFormat)}</span>
                 <span className="text-gray-400 dark:text-gray-500 text-base sm:text-lg"> / {formatMoney(budget + totalIncome, currency, numberFormat)}</span>
               </div>
@@ -483,10 +468,7 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
             </p>
           </div>
 
-          {/* --- Forms: Income on Left, Expense on Right --- */}
-          {/* md:grid-cols-2 ensures stacking on mobile already */}
           <div className="grid md:grid-cols-2 gap-8 mb-8">
-            {/* --- Add New Income Form --- */}
             <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md">
               <h3 className="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-100">Add New Income</h3>
               <form onSubmit={handleAddIncome} className="flex flex-col gap-4">
@@ -499,12 +481,10 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
                   rows="3"
                   className="p-3 bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
-                {/* Increased button padding for touch target */}
                 <button type="submit" className="p-3 sm:p-4 bg-green-600 text-white font-bold rounded-lg shadow-md hover:bg-green-700 transition-all">Add Income</button>
               </form>
             </div>
 
-            {/* --- Add New Expense Form --- */}
             <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md">
               <h3 className="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-100">Add New Expense</h3>
               <form onSubmit={handleAddExpense} className="flex flex-col gap-4">
@@ -517,20 +497,15 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
                   rows="3"
                   className="p-3 bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
-                {/* Increased button padding for touch target */}
                 <button type="submit" className="p-3 sm:p-4 bg-red-600 text-white font-bold rounded-lg shadow-md hover:bg-red-700 transition-all">Add Expense</button>
               </form>
             </div>
           </div>
 
-          {/* --- Consolidated Transactions List --- */}
           <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md">
-            {/* Flex column on small screens, row on medium+ */}
             <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 gap-4">
               <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-100 mb-2 sm:mb-0">Transaction History</h3>
-              {/* Filter and Search section */}
               <div className="flex flex-col sm:flex-row items-center gap-2 w-full sm:w-auto">
-                {/* Search Input - now takes full width on mobile */}
                 <input
                   type="text"
                   placeholder="Search transactions..."
@@ -538,10 +513,8 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="p-2 bg-[#2D3748] text-gray-300 placeholder-gray-400 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 w-full"
                 />
-                {/* Wrapper for Month and Year filters to keep them side-by-side on mobile */}
-                <div className="flex flex-row gap-2 w-full"> {/* Added flex-row and w-full */}
-                  {/* Month Filter */}
-                  <div className="relative flex-1 min-w-[120px]"> {/* Changed w-full sm:w-auto to flex-1 min-w */}
+                <div className="flex flex-row gap-2 w-full">
+                  <div className="relative flex-1 min-w-[120px]">
                     <select
                       value={selectedMonth}
                       onChange={(e) => setSelectedMonth(e.target.value)}
@@ -556,8 +529,7 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
                       <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
                     </div>
                   </div>
-                  {/* Year Filter */}
-                  <div className="relative flex-1 min-w-[100px]"> {/* Changed w-full sm:w-auto to flex-1 min-w */}
+                  <div className="relative flex-1 min-w-[100px]">
                     <select
                       value={selectedYear}
                       onChange={(e) => setSelectedYear(e.target.value)}
@@ -572,10 +544,9 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
                       <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
                     </div>
                   </div>
-                </div> {/* End of Month/Year wrapper */}
+                </div>
               </div>
             </div>
-            {/* Action Buttons */}
             <div className="flex flex-wrap gap-2 mb-4 justify-start sm:justify-end">
               <button
                 onClick={handleDownloadPdf}
@@ -599,7 +570,7 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
                 <DeleteAllIcon />
               </button>
             </div>
-            <div className="flex flex-col sm:flex-row justify-between text-lg font-semibold mb-3 gap-2"> {/* Stacks totals on mobile */}
+            <div className="flex flex-col sm:flex-row justify-between text-lg font-semibold mb-3 gap-2">
               <span className="text-green-600 dark:text-green-400 text-base sm:text-lg">Total Income: {formatMoney(totalIncome, currency, numberFormat)}</span>
               <span className="text-red-600 dark:text-red-400 text-base sm:text-lg">Total Expenses: {formatMoney(totalExpenses, currency, numberFormat)}</span>
             </div>
@@ -611,7 +582,6 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
                   className={`flex flex-col sm:flex-row sm:justify-between sm:items-start p-3 sm:p-4 rounded-lg
                               ${transaction.type === 'income' ? 'bg-green-50 dark:bg-green-900/20' : 'bg-red-50 dark:bg-red-900/20'}`}
                 >
-                  {/* Left section: Description, Notes, Date */}
                   <div className="flex-1 min-w-0">
                     <div>
                       <p className="text-gray-700 dark:text-gray-200 break-words font-medium">{transaction.description}</p>
@@ -619,12 +589,11 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
                       {transaction.createdAt && ( <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{formatDateTime(transaction.createdAt)}</p> )}
                     </div>
                   </div>
-                  {/* Right section: Amount and Action Buttons */}
                   <div className="flex flex-row sm:flex-col items-center sm:items-end gap-2 ml-0 sm:ml-4 shrink-0 w-full sm:w-auto justify-between sm:justify-start">
                     <span className={`font-bold text-lg ${transaction.type === 'income' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                       {transaction.type === 'income' ? '+' : '-'} {formatMoney(transaction.amount, currency, numberFormat)}
                     </span>
-                    <div className="flex gap-1 sm:mt-2"> {/* Group buttons */}
+                    <div className="flex gap-1 sm:mt-2">
                       <button
                         onClick={() => transaction.type === 'expense' ? setEditingExpense(transaction) : setEditingIncome(transaction)}
                         className="text-blue-500 hover:text-blue-700 p-2 rounded-full hover:bg-blue-100 dark:hover:bg-blue-900/50"

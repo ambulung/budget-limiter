@@ -68,10 +68,10 @@ const SetupModal = ({ isOpen, onSave, onClose, user, initialSettings, onDeleteAc
     });
   };
 
-  const handleDelete = () => {
-    if (window.confirm('Are you sure you want to delete your account? This will permanently erase all your data and cannot be undone.')) {
-        onDeleteAccount();
-    }
+  const handleDeleteButtonClick = () => {
+    // This now directly calls the onDeleteAccount prop,
+    // which in App.jsx is set to handleTriggerDeleteConfirmation
+    onDeleteAccount(); 
   };
 
   if (!isOpen) return null;
@@ -147,7 +147,7 @@ const SetupModal = ({ isOpen, onSave, onClose, user, initialSettings, onDeleteAc
            <h3 className="text-lg font-semibold text-red-600 dark:text-red-500">Danger Zone</h3>
            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 mb-3">Deleting your account is a permanent action.</p>
            <button 
-                onClick={handleDelete}
+                onClick={handleDeleteButtonClick}
                 type="button"
                 className="w-full p-2 bg-red-600 text-white font-bold rounded-lg shadow-md hover:bg-red-700 transition-all"
             >
