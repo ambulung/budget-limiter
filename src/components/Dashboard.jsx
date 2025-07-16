@@ -13,7 +13,7 @@ import ConfirmationModal from './ConfirmationModal';
 const EditIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.5L15.232 5.232z" /></svg> );
 const DeleteIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-4v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg> );
 const DownloadIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg> );
-const DeleteAllIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeLineWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-4v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg> );
+const DeleteAllIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-4v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg> );
 
 const formatMoney = (amount, currencySymbol, numberFormat) => {
   const num = Number(amount);
@@ -137,21 +137,19 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
 
   useEffect(() => {
     if (!user.uid) return;
-    const expensesColRef = collection(db, 'userSettings', user.uid, 'transactions', 'expenses');
-    const qExpenses = query(expensesColRef, orderBy('createdAt', 'desc'));
-    const unsubscribeExpenses = onSnapshot(qExpenses, (snapshot) => {
-      setExpenses(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-    });
 
-    const incomesColRef = collection(db, 'userSettings', user.uid, 'transactions', 'incomes');
-    const qIncomes = query(incomesColRef, orderBy('createdAt', 'desc'));
-    const unsubscribeIncomes = onSnapshot(qIncomes, (snapshot) => {
-      setIncomes(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    // Listen to the single 'transactions' subcollection
+    const transactionsColRef = collection(db, 'userSettings', user.uid, 'transactions');
+    const qTransactions = query(transactionsColRef, orderBy('createdAt', 'desc'));
+
+    const unsubscribeTransactions = onSnapshot(qTransactions, (snapshot) => {
+      const allTransactions = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setExpenses(allTransactions.filter(t => t.type === 'expense'));
+      setIncomes(allTransactions.filter(t => t.type === 'income'));
     });
 
     return () => {
-      unsubscribeExpenses();
-      unsubscribeIncomes();
+      unsubscribeTransactions();
     };
   }, [user.uid]);
 
@@ -181,13 +179,14 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
       return;
     }
 
-    const expensesColRef = collection(db, 'userSettings', user.uid, 'transactions', 'expenses');
+    const transactionsColRef = collection(db, 'userSettings', user.uid, 'transactions');
     try {
-      await addDoc(expensesColRef, {
+      await addDoc(transactionsColRef, {
         description: newExpenseDesc.trim(),
         amount: amount,
         createdAt: new Date(),
         notes: newExpenseNotes.trim(),
+        type: 'expense', // Added type field
       });
       setNewExpenseDesc('');
       setNewExpenseAmount('');
@@ -208,13 +207,14 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
       return;
     }
 
-    const incomesColRef = collection(db, 'userSettings', user.uid, 'transactions', 'incomes');
+    const transactionsColRef = collection(db, 'userSettings', user.uid, 'transactions');
     try {
-      await addDoc(incomesColRef, {
+      await addDoc(transactionsColRef, {
         description: newIncomeDesc.trim(),
         amount: amount,
         createdAt: new Date(),
         notes: newIncomeNotes.trim(),
+        type: 'income', // Added type field
       });
       setNewIncomeDesc('');
       setNewIncomeAmount('');
@@ -227,7 +227,7 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
   };
 
   const handleUpdateExpense = async (updatedExpense) => {
-    const expenseDocRef = doc(db, 'userSettings', user.uid, 'transactions', 'expenses', updatedExpense.id);
+    const expenseDocRef = doc(db, 'userSettings', user.uid, 'transactions', updatedExpense.id);
     try {
       await updateDoc(expenseDocRef, {
         description: updatedExpense.description,
@@ -243,7 +243,7 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
   };
 
   const handleUpdateIncome = async (updatedIncome) => {
-    const incomeDocRef = doc(db, 'userSettings', user.uid, 'transactions', 'incomes', updatedIncome.id);
+    const incomeDocRef = doc(db, 'userSettings', user.uid, 'transactions', updatedIncome.id);
     try {
       await updateDoc(incomeDocRef, {
         description: updatedIncome.description,
@@ -259,10 +259,7 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
   };
 
   const handleDeleteTransaction = async (transaction) => {
-    const docRef = transaction.type === 'expense'
-      ? doc(db, 'userSettings', user.uid, 'transactions', 'expenses', transaction.id)
-      : doc(db, 'userSettings', user.uid, 'transactions', 'incomes', transaction.id);
-
+    const docRef = doc(db, 'userSettings', user.uid, 'transactions', transaction.id);
     try {
       const docSnap = await getDoc(docRef);
       if (!docSnap.exists()) return;
@@ -284,9 +281,7 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
 
   const handleUndoDelete = async (idToRestore, dataToRestore, transactionType) => {
     if (!idToRestore || !dataToRestore || !transactionType) return;
-    const docRef = transactionType === 'expense'
-      ? doc(db, 'userSettings', user.uid, 'transactions', 'expenses', idToRestore)
-      : doc(db, 'userSettings', user.uid, 'transactions', 'incomes', idToRestore);
+    const docRef = doc(db, 'userSettings', user.uid, 'transactions', idToRestore);
     try {
       await setDoc(docRef, dataToRestore);
       toast.success(`${transactionType === 'expense' ? 'Expense' : 'Income'} restored!`);
@@ -373,29 +368,29 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
     if (!confirmDeleteAllType) return;
 
     let deletionPromise;
-    let collectionPath;
+    const transactionsColRef = collection(db, 'userSettings', user.uid, 'transactions');
+    let itemsToDelete = [];
     let successMsg;
     let errorMsg;
 
     if (confirmDeleteAllType === 'expenses') {
-      if (expenses.length === 0) {
-        return toast.error("There are no expenses to delete.");
-      }
-      collectionPath = collection(db, 'userSettings', user.uid, 'transactions', 'expenses');
-      deletionPromise = Promise.all(expenses.map(expense => deleteDoc(doc(collectionPath, expense.id))));
+      itemsToDelete = expenses;
       successMsg = 'All expenses deleted successfully!';
       errorMsg = 'Failed to delete all expenses.';
     } else if (confirmDeleteAllType === 'incomes') {
-      if (incomes.length === 0) {
-        return toast.error("There are no incomes to delete.");
-      }
-      collectionPath = collection(db, 'userSettings', user.uid, 'transactions', 'incomes');
-      deletionPromise = Promise.all(incomes.map(income => deleteDoc(doc(collectionPath, income.id))));
+      itemsToDelete = incomes;
       successMsg = 'All incomes deleted successfully!';
       errorMsg = 'Failed to delete all incomes.';
     } else {
         return;
     }
+
+    if (itemsToDelete.length === 0) {
+      return toast.error(`There are no ${confirmDeleteAllType} to delete.`);
+    }
+
+    // Filter to delete only the specific type
+    deletionPromise = Promise.all(itemsToDelete.map(item => deleteDoc(doc(transactionsColRef, item.id))));
 
     toast.promise(deletionPromise, {
       loading: `Deleting all ${confirmDeleteAllType}...`,
@@ -403,7 +398,7 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
       error: errorMsg,
     });
     setConfirmDeleteAllType(null);
-  }
+  } // Corrected: removed semicolon
 
   return (
     <>
