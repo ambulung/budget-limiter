@@ -71,12 +71,6 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
   const [selectedYear, setSelectedYear] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
 
-  // Reverted to a single sort order for the combined list
-  const [sortOrder, setSortOrder] = useState('newest');
-  // NEW: State to filter by transaction type ('all', 'income', 'expense')
-  const [transactionFilterType, setTransactionFilterType] = useState('all');
-
-
   const { budget, currency, numberFormat, appTitle } = appSettings;
 
   const totalExpenses = expenses.reduce((sum, expense) => sum + expense.amount, 0);
@@ -91,13 +85,6 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
       ...expenses.map(e => ({ ...e, type: 'expense' })),
       ...incomes.map(i => ({ ...i, type: 'income' }))
     ];
-
-    // Apply transaction type filter
-    if (transactionFilterType === 'income') {
-      transactions = transactions.filter(t => t.type === 'income');
-    } else if (transactionFilterType === 'expense') {
-      transactions = transactions.filter(t => t.type === 'expense');
-    }
 
     if (selectedMonth !== '') {
       transactions = transactions.filter(t => {
@@ -121,28 +108,8 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
       );
     }
 
-    // Apply sorting based on sortOrder
-    transactions.sort((a, b) => {
-      switch (sortOrder) {
-        case 'newest':
-          return b.createdAt.toDate() - a.createdAt.toDate();
-        case 'oldest':
-          return a.createdAt.toDate() - b.createdAt.toDate();
-        case 'amount_asc':
-          return a.amount - b.amount;
-        case 'amount_desc':
-          return b.amount - a.amount;
-        case 'description_asc':
-          return a.description.localeCompare(b.description);
-        case 'description_desc':
-          return b.description.localeCompare(a.description);
-        default:
-          return b.createdAt.toDate() - a.createdAt.toDate(); // Default to newest
-      }
-    });
-
-    return transactions;
-  }, [expenses, incomes, selectedMonth, selectedYear, searchTerm, sortOrder, transactionFilterType]); // Add transactionFilterType to dependencies
+    return transactions.sort((a, b) => b.createdAt.toDate() - a.createdAt.toDate());
+  }, [expenses, incomes, selectedMonth, selectedYear, searchTerm]);
 
   const availableYears = useMemo(() => {
     const years = new Set();
@@ -173,7 +140,7 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
 
     // Listen to the single 'transactions' subcollection
     const transactionsColRef = collection(db, 'userSettings', user.uid, 'transactions');
-    const qTransactions = query(transactionsColRef, orderBy('createdAt', 'desc')); // Initial order for snapshot
+    const qTransactions = query(transactionsColRef, orderBy('createdAt', 'desc'));
 
     const unsubscribeTransactions = onSnapshot(qTransactions, (snapshot) => {
       const allTransactions = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -431,7 +398,7 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
       error: errorMsg,
     });
     setConfirmDeleteAllType(null);
-  }
+  } // Corrected: removed semicolon
 
   return (
     <>
@@ -572,47 +539,10 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
                       <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
                     </div>
                   </div>
-                  {/* Re-added the combined sort order dropdown here */}
-                  <div className="relative flex-1 min-w-[120px]">
-                    <select
-                      value={sortOrder}
-                      onChange={(e) => setSortOrder(e.target.value)}
-                      className="p-2 pr-8 rounded-lg bg-[#2D3748] text-gray-300 border border-gray-700 appearance-none w-full"
-                    >
-                      <option value="newest">Newest First</option>
-                      <option value="oldest">Oldest First</option>
-                      <option value="amount_asc">Amount (Low to High)</option>
-                      <option value="amount_desc">Amount (High to Low)</option>
-                      <option value="description_asc">Description (A-Z)</option>
-                      <option value="description_desc">Description (Z-A)</option>
-                    </select>
-                    <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
-                      <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
-                    </div>
-                  </div>
                 </div>
               </div>
             </div>
-            {/* NEW: Filter buttons for Income/Expense */}
             <div className="flex flex-wrap gap-2 mb-4 justify-start sm:justify-end">
-              <button
-                onClick={() => setTransactionFilterType('all')}
-                className={`px-4 py-2 rounded-lg font-semibold transition-colors ${transactionFilterType === 'all' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-800 dark:bg-gray-700 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600'}`}
-              >
-                Show All
-              </button>
-              <button
-                onClick={() => setTransactionFilterType('income')}
-                className={`px-4 py-2 rounded-lg font-semibold transition-colors ${transactionFilterType === 'income' ? 'bg-green-600 text-white' : 'bg-gray-200 text-gray-800 dark:bg-gray-700 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600'}`}
-              >
-                See Income
-              </button>
-              <button
-                onClick={() => setTransactionFilterType('expense')}
-                className={`px-4 py-2 rounded-lg font-semibold transition-colors ${transactionFilterType === 'expense' ? 'bg-red-600 text-white' : 'bg-gray-200 text-gray-800 dark:bg-gray-700 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600'}`}
-              >
-                See Expenses
-              </button>
               <button
                 onClick={handleDownloadPdf}
                 className="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors flex-shrink-0"

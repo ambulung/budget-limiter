@@ -131,9 +131,11 @@ const Login = () => {
       <div className="w-full max-w-md bg-white dark:bg-gray-800 p-8 rounded-xl shadow-2xl">
         <h1 className="text-3xl font-bold mb-2 text-center text-gray-800 dark:text-gray-100">
           {isLoginView ? 'Hello There!' : 'Create an Account'}
+          {/* ^^^^^ CHANGED THIS LINE ^^^^^ */}
         </h1>
         <p className="text-gray-600 dark:text-gray-400 mb-6 text-center">
           {isLoginView ? 'Manage your finances now!' : 'Get started by creating your account.'}
+          {/* ^^^^^ CHANGED THIS LINE ^^^^^ */}
         </p>
 
         <form onSubmit={handleSubmit} className="space-y-4" noValidate>
@@ -242,10 +244,6 @@ const Login = () => {
             <GuestIcon />
             {isProcessing && processingAction === 'guest' ? 'Signing in...' : 'Continue as Guest'}
           </button>
-          {/* NEW: Anonymous user data retention message */}
-          <p className="text-sm text-gray-500 dark:text-gray-400 text-center mt-2">
-            Guest data is temporary and will be removed after 24 hours of inactivity.
-          </p>
         </div>
 
       </div>
