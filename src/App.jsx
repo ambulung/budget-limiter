@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import { auth, db } from './firebase';
-import { doc, getDoc, setDoc } from "firebase/firestore";
+import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore"; // Import serverTimestamp
 import { getFunctions, httpsCallable } from "firebase/functions";
 import { Toaster, toast } from 'react-hot-toast';
 
@@ -46,6 +46,11 @@ function App() {
         setShowSetupModal(false);
         setShowConfirmEndSessionModal(false);
         setShowConfirmDeleteAccountModal(false);
+      } else {
+        // --- NEW: Update lastActivity on any auth state change (login, refresh) ---
+        const userDocRef = doc(db, 'userSettings', currentUser.uid);
+        setDoc(userDocRef, { lastActivity: serverTimestamp() }, { merge: true })
+          .catch(error => console.error("Error updating last activity on auth change:", error));
       }
     });
     return () => unsubscribe();
@@ -64,21 +69,22 @@ function App() {
         if (docSnap.exists()) {
           const userData = docSnap.data();
 
-          // --- IMPORTANT CHANGE HERE ---
-          // Attempt to decrypt the budget when fetching it from Firestore
           const decryptedBudget = decryptBudget(userData.budget);
-          // Use the decrypted budget, or fallback to 1000 if decryption fails or data is missing
           const effectiveBudget = typeof decryptedBudget === 'number' ? decryptedBudget : 1000;
-          // --- END IMPORTANT CHANGE ---
 
           setAppSettings({
-            budget: effectiveBudget, // Use the decrypted/effective budget
+            budget: effectiveBudget,
             currency: userData.currency || '$',
             numberFormat: userData.numberFormat || 'comma',
             appTitle: userData.appTitle || 'My Expense Tracker',
             isNewUser: false,
           });
           setShowSetupModal(false);
+
+          // --- NEW: Update lastActivity when fetching/loading settings ---
+          // This ensures activity is recorded even if settings aren't explicitly saved.
+          await setDoc(userDocRef, { lastActivity: serverTimestamp() }, { merge: true });
+
         } else {
           // If no settings exist, it's a new user, show setup modal
           setAppSettings({
@@ -89,6 +95,8 @@ function App() {
             isNewUser: true,
           });
           setShowSetupModal(true);
+          // --- NEW: For new users (including new anonymous users), set initial lastActivity ---
+          await setDoc(userDocRef, { lastActivity: serverTimestamp() }, { merge: true });
         }
       } catch (error) {
         console.error("Failed to fetch user settings:", error);
@@ -107,7 +115,8 @@ function App() {
     try {
       const userDocRef = doc(db, 'userSettings', user.uid);
       // 'settings' object received here already has the encrypted budget from SetupModal
-      await setDoc(userDocRef, settings, { merge: true });
+      // --- NEW: Merge new settings and update lastActivity ---
+      await setDoc(userDocRef, { ...settings, lastActivity: serverTimestamp() }, { merge: true });
       
       // Update appSettings state with the *decrypted* budget for immediate use in app
       // This is necessary because the Dashboard needs the actual number, not the encrypted string.
