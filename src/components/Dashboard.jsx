@@ -70,6 +70,7 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
   const [selectedMonth, setSelectedMonth] = useState('');
   const [selectedYear, setSelectedYear] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
+  const [sortOrder, setSortOrder] = useState('newest'); // New state for sort order
 
   const { budget, currency, numberFormat, appTitle } = appSettings;
 
@@ -108,8 +109,28 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
       );
     }
 
-    return transactions.sort((a, b) => b.createdAt.toDate() - a.createdAt.toDate());
-  }, [expenses, incomes, selectedMonth, selectedYear, searchTerm]);
+    // Apply sorting based on sortOrder
+    transactions.sort((a, b) => {
+      switch (sortOrder) {
+        case 'newest':
+          return b.createdAt.toDate() - a.createdAt.toDate();
+        case 'oldest':
+          return a.createdAt.toDate() - b.createdAt.toDate();
+        case 'amount_asc':
+          return a.amount - b.amount;
+        case 'amount_desc':
+          return b.amount - a.amount;
+        case 'description_asc':
+          return a.description.localeCompare(b.description);
+        case 'description_desc':
+          return b.description.localeCompare(a.description);
+        default:
+          return b.createdAt.toDate() - a.createdAt.toDate(); // Default to newest
+      }
+    });
+
+    return transactions;
+  }, [expenses, incomes, selectedMonth, selectedYear, searchTerm, sortOrder]); // Add sortOrder to dependencies
 
   const availableYears = useMemo(() => {
     const years = new Set();
@@ -140,7 +161,7 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
 
     // Listen to the single 'transactions' subcollection
     const transactionsColRef = collection(db, 'userSettings', user.uid, 'transactions');
-    const qTransactions = query(transactionsColRef, orderBy('createdAt', 'desc'));
+    const qTransactions = query(transactionsColRef, orderBy('createdAt', 'desc')); // Initial order for snapshot
 
     const unsubscribeTransactions = onSnapshot(qTransactions, (snapshot) => {
       const allTransactions = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -398,7 +419,7 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
       error: errorMsg,
     });
     setConfirmDeleteAllType(null);
-  } // Corrected: removed semicolon
+  }
 
   return (
     <>
@@ -534,6 +555,24 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
                       {availableYears.map(year => (
                         <option key={year} value={year}>{year}</option>
                       ))}
+                    </select>
+                    <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
+                      <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+                    </div>
+                  </div>
+                  {/* New Sort Order Dropdown */}
+                  <div className="relative flex-1 min-w-[120px]">
+                    <select
+                      value={sortOrder}
+                      onChange={(e) => setSortOrder(e.target.value)}
+                      className="p-2 pr-8 rounded-lg bg-[#2D3748] text-gray-300 border border-gray-700 appearance-none w-full"
+                    >
+                      <option value="newest">Newest First</option>
+                      <option value="oldest">Oldest First</option>
+                      <option value="amount_asc">Amount (Low to High)</option>
+                      <option value="amount_desc">Amount (High to Low)</option>
+                      <option value="description_asc">Description (A-Z)</option>
+                      <option value="description_desc">Description (Z-A)</option>
                     </select>
                     <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
                       <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
