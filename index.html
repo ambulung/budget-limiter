@@ -25,10 +25,23 @@
     ">
 
     <!-- Favicons and App Icons -->
-    <!-- ... (your existing favicons) ... -->
+    <!-- Standard Favicon -->
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <!-- SVG Favicon for modern browsers -->
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <!-- Apple Touch Icon for iOS devices -->
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <!-- Web App Manifest for PWA features -->
+    <link rel="manifest" href="/manifest.webmanifest" />
 
     <!-- Theme Color for Browser UI -->
     <meta name="theme-color" content="#2563EB" /> 
+
+    <!-- reCAPTCHA v3 script -->
+    <!-- IMPORTANT: Replace YOUR_RECAPTCHA_V3_SITE_KEY_HERE with your actual public reCAPTCHA v3 site key. -->
+    <!-- This key is public by design and is needed for the reCAPTCHA JavaScript to load. -->
+    <script src="https://www.google.com/recaptcha/api.js?render=6LftDX8rAAAAAE0QTfbNNRavM60DjOUBWrQwFSC5"></script>
+
   </head>
   <body>
     <div id="root"></div>
