@@ -70,7 +70,10 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
   const [selectedMonth, setSelectedMonth] = useState('');
   const [selectedYear, setSelectedYear] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
-  const [sortOrder, setSortOrder] = useState('newest'); // New state for sort order
+
+  // NEW: Separate sort orders for income and expenses
+  const [incomeSortOrder, setIncomeSortOrder] = useState('newest');
+  const [expenseSortOrder, setExpenseSortOrder] = useState('newest');
 
   const { budget, currency, numberFormat, appTitle } = appSettings;
 
@@ -81,10 +84,44 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
     ? (((budget + totalIncome) - totalExpenses) / (budget + totalIncome) * 100).toFixed(2)
     : 0;
 
+  // Helper function for sorting logic
+  const applySort = (arr, sortOrder) => {
+    return [...arr].sort((a, b) => {
+      switch (sortOrder) {
+        case 'newest':
+          return b.createdAt.toDate() - a.createdAt.toDate();
+        case 'oldest':
+          return a.createdAt.toDate() - b.createdAt.toDate();
+        case 'amount_asc':
+          return a.amount - b.amount;
+        case 'amount_desc':
+          return b.amount - a.amount;
+        case 'description_asc':
+          return a.description.localeCompare(b.description);
+        case 'description_desc':
+          return b.description.localeCompare(a.description);
+        default:
+          return b.createdAt.toDate() - a.createdAt.toDate(); // Default to newest
+      }
+    });
+  };
+
+  // Memoized sorted incomes
+  const sortedIncomes = useMemo(() => {
+    return applySort(incomes, incomeSortOrder);
+  }, [incomes, incomeSortOrder]);
+
+  // Memoized sorted expenses
+  const sortedExpenses = useMemo(() => {
+    return applySort(expenses, expenseSortOrder);
+  }, [expenses, expenseSortOrder]);
+
+
+  // Combined filtered transactions for the "Transaction History" section
   const filteredTransactions = useMemo(() => {
     let transactions = [
-      ...expenses.map(e => ({ ...e, type: 'expense' })),
-      ...incomes.map(i => ({ ...i, type: 'income' }))
+      ...incomes.map(i => ({ ...i, type: 'income' })), // Use original incomes, not sorted ones
+      ...expenses.map(e => ({ ...e, type: 'expense' })) // Use original expenses, not sorted ones
     ];
 
     if (selectedMonth !== '') {
@@ -108,29 +145,11 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
         (t.notes && t.notes.toLowerCase().includes(lowerCaseSearchTerm))
       );
     }
+    // The combined transaction history will still default to newest or can have its own sort.
+    // For now, let's keep it sorted by newest by default, or you can add a separate sort for this list too.
+    return transactions.sort((a, b) => b.createdAt.toDate() - a.createdAt.toDate());
+  }, [expenses, incomes, selectedMonth, selectedYear, searchTerm]);
 
-    // Apply sorting based on sortOrder
-    transactions.sort((a, b) => {
-      switch (sortOrder) {
-        case 'newest':
-          return b.createdAt.toDate() - a.createdAt.toDate();
-        case 'oldest':
-          return a.createdAt.toDate() - b.createdAt.toDate();
-        case 'amount_asc':
-          return a.amount - b.amount;
-        case 'amount_desc':
-          return b.amount - a.amount;
-        case 'description_asc':
-          return a.description.localeCompare(b.description);
-        case 'description_desc':
-          return b.description.localeCompare(a.description);
-        default:
-          return b.createdAt.toDate() - a.createdAt.toDate(); // Default to newest
-      }
-    });
-
-    return transactions;
-  }, [expenses, incomes, selectedMonth, selectedYear, searchTerm, sortOrder]); // Add sortOrder to dependencies
 
   const availableYears = useMemo(() => {
     const years = new Set();
@@ -518,7 +537,7 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
             </div>
           </div>
 
-          <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md">
+          <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md mb-8">
             <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 gap-4">
               <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-100 mb-2 sm:mb-0">Transaction History</h3>
               <div className="flex flex-col sm:flex-row items-center gap-2 w-full sm:w-auto">
@@ -560,24 +579,7 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
                       <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
                     </div>
                   </div>
-                  {/* New Sort Order Dropdown */}
-                  <div className="relative flex-1 min-w-[120px]">
-                    <select
-                      value={sortOrder}
-                      onChange={(e) => setSortOrder(e.target.value)}
-                      className="p-2 pr-8 rounded-lg bg-[#2D3748] text-gray-300 border border-gray-700 appearance-none w-full"
-                    >
-                      <option value="newest">Newest First</option>
-                      <option value="oldest">Oldest First</option>
-                      <option value="amount_asc">Amount (Low to High)</option>
-                      <option value="amount_desc">Amount (High to Low)</option>
-                      <option value="description_asc">Description (A-Z)</option>
-                      <option value="description_desc">Description (Z-A)</option>
-                    </select>
-                    <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
-                      <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
-                    </div>
-                  </div>
+                  {/* Removed the combined sort order dropdown from here */}
                 </div>
               </div>
             </div>
@@ -639,6 +641,130 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
                         onClick={() => handleDeleteTransaction(transaction)}
                         className="text-red-500 hover:text-red-700 p-2 rounded-full hover:bg-red-100 dark:hover:bg-red-900/50"
                         title={`Delete ${transaction.type}`}
+                      >
+                        <DeleteIcon />
+                      </button>
+                    </div>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* NEW: Separate Income List Section */}
+          <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md mb-8">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 gap-4">
+              <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-100 mb-2 sm:mb-0">Income List</h3>
+              <div className="relative min-w-[150px]">
+                <select
+                  value={incomeSortOrder}
+                  onChange={(e) => setIncomeSortOrder(e.target.value)}
+                  className="p-2 pr-8 rounded-lg bg-[#2D3748] text-gray-300 border border-gray-700 appearance-none w-full"
+                >
+                  <option value="newest">Newest First</option>
+                  <option value="oldest">Oldest First</option>
+                  <option value="amount_asc">Amount (Low to High)</option>
+                  <option value="amount_desc">Amount (High to Low)</option>
+                  <option value="description_asc">Description (A-Z)</option>
+                  <option value="description_desc">Description (Z-A)</option>
+                </select>
+                <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
+                  <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+                </div>
+              </div>
+            </div>
+            <ul className="space-y-3 h-[300px] overflow-y-auto pr-2">
+              {sortedIncomes.length === 0 && <p className="text-gray-500 dark:text-gray-400">No income recorded.</p>}
+              {sortedIncomes.map(income => (
+                <li
+                  key={income.id}
+                  className="flex flex-col sm:flex-row sm:justify-between sm:items-start p-3 sm:p-4 rounded-lg bg-green-50 dark:bg-green-900/20"
+                >
+                  <div className="flex-1 min-w-0">
+                    <div>
+                      <p className="text-gray-700 dark:text-gray-200 break-words font-medium">{income.description}</p>
+                      {income.notes && ( <p className="text-sm italic text-gray-600 dark:text-gray-400 mt-1 break-words">{income.notes}</p> )}
+                      {income.createdAt && ( <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{formatDateTime(income.createdAt)}</p> )}
+                    </div>
+                  </div>
+                  <div className="flex flex-row sm:flex-col items-center sm:items-end gap-2 ml-0 sm:ml-4 shrink-0 w-full sm:w-auto justify-between sm:justify-start">
+                    <span className="font-bold text-lg text-green-600 dark:text-green-400">
+                      + {formatMoney(income.amount, currency, numberFormat)}
+                    </span>
+                    <div className="flex gap-1 sm:mt-2">
+                      <button
+                        onClick={() => setEditingIncome(income)}
+                        className="text-blue-500 hover:text-blue-700 p-2 rounded-full hover:bg-blue-100 dark:hover:bg-blue-900/50"
+                        title="Edit Income"
+                      >
+                        <EditIcon />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteTransaction(income)}
+                        className="text-red-500 hover:text-red-700 p-2 rounded-full hover:bg-red-100 dark:hover:bg-red-900/50"
+                        title="Delete Income"
+                      >
+                        <DeleteIcon />
+                      </button>
+                    </div>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* NEW: Separate Expense List Section */}
+          <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 gap-4">
+              <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-100 mb-2 sm:mb-0">Expense List</h3>
+              <div className="relative min-w-[150px]">
+                <select
+                  value={expenseSortOrder}
+                  onChange={(e) => setExpenseSortOrder(e.target.value)}
+                  className="p-2 pr-8 rounded-lg bg-[#2D3748] text-gray-300 border border-gray-700 appearance-none w-full"
+                >
+                  <option value="newest">Newest First</option>
+                  <option value="oldest">Oldest First</option>
+                  <option value="amount_asc">Amount (Low to High)</option>
+                  <option value="amount_desc">Amount (High to Low)</option>
+                  <option value="description_asc">Description (A-Z)</option>
+                  <option value="description_desc">Description (Z-A)</option>
+                </select>
+                <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
+                  <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+                </div>
+              </div>
+            </div>
+            <ul className="space-y-3 h-[300px] overflow-y-auto pr-2">
+              {sortedExpenses.length === 0 && <p className="text-gray-500 dark:text-gray-400">No expenses recorded.</p>}
+              {sortedExpenses.map(expense => (
+                <li
+                  key={expense.id}
+                  className="flex flex-col sm:flex-row sm:justify-between sm:items-start p-3 sm:p-4 rounded-lg bg-red-50 dark:bg-red-900/20"
+                >
+                  <div className="flex-1 min-w-0">
+                    <div>
+                      <p className="text-gray-700 dark:text-gray-200 break-words font-medium">{expense.description}</p>
+                      {expense.notes && ( <p className="text-sm italic text-gray-600 dark:text-gray-400 mt-1 break-words">{expense.notes}</p> )}
+                      {expense.createdAt && ( <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{formatDateTime(expense.createdAt)}</p> )}
+                    </div>
+                  </div>
+                  <div className="flex flex-row sm:flex-col items-center sm:items-end gap-2 ml-0 sm:ml-4 shrink-0 w-full sm:w-auto justify-between sm:justify-start">
+                    <span className="font-bold text-lg text-red-600 dark:text-red-400">
+                      - {formatMoney(expense.amount, currency, numberFormat)}
+                    </span>
+                    <div className="flex gap-1 sm:mt-2">
+                      <button
+                        onClick={() => setEditingExpense(expense)}
+                        className="text-blue-500 hover:text-blue-700 p-2 rounded-full hover:bg-blue-100 dark:hover:bg-blue-900/50"
+                        title="Edit Expense"
+                      >
+                        <EditIcon />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteTransaction(expense)}
+                        className="text-red-500 hover:text-red-700 p-2 rounded-full hover:bg-red-100 dark:hover:bg-red-900/50"
+                        title="Delete Expense"
                       >
                         <DeleteIcon />
                       </button>
