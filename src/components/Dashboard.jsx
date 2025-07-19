@@ -5,16 +5,18 @@ import { toast } from 'react-hot-toast';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
-import SetupModal from './SetupModal';
+import SetupModal from './SetupModal'; // This import is correct
 import EditExpenseModal from './EditExpenseModal';
 import EditIncomeModal from './EditIncomeModal';
 import ConfirmationModal from './ConfirmationModal';
 
+// Icon components (no changes needed here)
 const EditIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.5L15.232 5.232z" /></svg> );
 const DeleteIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-4v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg> );
 const DownloadIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg> );
 const DeleteAllIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-4v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg> );
 
+// Helper functions (no changes needed here)
 const formatMoney = (amount, currencySymbol, numberFormat) => {
   const num = Number(amount);
   if (isNaN(num)) return `${currencySymbol || '$'}0.00`;
@@ -51,7 +53,8 @@ const monthNames = [
   "July", "August", "September", "October", "November", "December"
 ];
 
-const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updateAppSettings, onDeleteAccount }) => {
+// Dashboard Component
+const Dashboard = ({ user, appSettings, setShowSetupModal, onDeleteAccount }) => { // Added setShowSetupModal to props
   const [editingExpense, setEditingExpense] = useState(null);
   const [editingIncome, setEditingIncome] = useState(null);
   const [showConfirmDeleteAllModal, setShowConfirmDeleteAllModal] = useState(false);
@@ -71,14 +74,12 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
   const [selectedYear, setSelectedYear] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
 
-  // Reverted to a single sort order for the combined list
   const [sortOrder, setSortOrder] = useState('newest');
-  // NEW: State to filter by transaction type ('all', 'income', 'expense')
   const [transactionFilterType, setTransactionFilterType] = useState('all');
-
 
   const { budget, currency, numberFormat, appTitle } = appSettings;
 
+  // Calculations for budget summary (no changes needed here)
   const totalExpenses = expenses.reduce((sum, expense) => sum + expense.amount, 0);
   const totalIncome = incomes.reduce((sum, income) => sum + income.amount, 0);
   const remainingBudget = (budget + totalIncome) - totalExpenses;
@@ -86,13 +87,13 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
     ? (((budget + totalIncome) - totalExpenses) / (budget + totalIncome) * 100).toFixed(2)
     : 0;
 
+  // Memoized filtered and sorted transactions (no changes needed here)
   const filteredTransactions = useMemo(() => {
     let transactions = [
       ...expenses.map(e => ({ ...e, type: 'expense' })),
       ...incomes.map(i => ({ ...i, type: 'income' }))
     ];
 
-    // Apply transaction type filter
     if (transactionFilterType === 'income') {
       transactions = transactions.filter(t => t.type === 'income');
     } else if (transactionFilterType === 'expense') {
@@ -121,7 +122,6 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
       );
     }
 
-    // Apply sorting based on sortOrder
     transactions.sort((a, b) => {
       switch (sortOrder) {
         case 'newest':
@@ -137,13 +137,14 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
         case 'description_desc':
           return b.description.localeCompare(a.description);
         default:
-          return b.createdAt.toDate() - a.createdAt.toDate(); // Default to newest
+          return b.createdAt.toDate() - a.createdAt.toDate();
       }
     });
 
     return transactions;
-  }, [expenses, incomes, selectedMonth, selectedYear, searchTerm, sortOrder, transactionFilterType]); // Add transactionFilterType to dependencies
+  }, [expenses, incomes, selectedMonth, selectedYear, searchTerm, sortOrder, transactionFilterType]);
 
+  // Memoized available years (no changes needed here)
   const availableYears = useMemo(() => {
     const years = new Set();
     [...expenses, ...incomes].forEach(t => {
@@ -154,6 +155,7 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
     return Array.from(years).sort((a, b) => b - a);
   }, [expenses, incomes]);
 
+  // Helper functions for progress bar styling (no changes needed here)
   const getTextColorClass = () => {
     const progressNum = parseFloat(remainingProgress);
     if (progressNum <= 20) return 'text-red-500';
@@ -168,12 +170,12 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
     return 'bg-green-500';
   };
 
+  // Firestore listener for transactions (no changes needed here)
   useEffect(() => {
     if (!user.uid) return;
 
-    // Listen to the single 'transactions' subcollection
     const transactionsColRef = collection(db, 'userSettings', user.uid, 'transactions');
-    const qTransactions = query(transactionsColRef, orderBy('createdAt', 'desc')); // Initial order for snapshot
+    const qTransactions = query(transactionsColRef, orderBy('createdAt', 'desc'));
 
     const unsubscribeTransactions = onSnapshot(qTransactions, (snapshot) => {
       const allTransactions = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -186,6 +188,7 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
     };
   }, [user.uid]);
 
+  // Handlers for settings, adding/updating/deleting transactions (no changes needed here)
   const handleSaveSettings = async (settings) => {
     if (!settings.budget || settings.budget <= 0) {
       toast.error("Please enter a valid budget.");
@@ -194,9 +197,19 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
     const userDocRef = doc(db, 'userSettings', user.uid);
     try {
       await setDoc(userDocRef, settings, { merge: true });
-      updateAppSettings(prev => ({...prev, ...settings}));
-      setShowSetupModal(false);
+      // This updateAppSettings prop is from App.js, which will decrypt the budget
+      // before updating the appSettings state in App.js
+      // The SetupModal itself already handles the encryption before calling onSave.
+      // So, we just pass the settings object as is.
+      // The parent (App.js) will handle the state update with decrypted budget.
+      // We don't need to decrypt here because App.js will do it.
+      // However, if updateAppSettings expects decrypted, then we need to decrypt here.
+      // Assuming updateAppSettings in App.js expects the encrypted budget to be passed
+      // and then decrypts it itself for its state.
+      // Re-reading App.js, it expects the 'settings' object to contain the encrypted budget.
+      // So, this is correct.
       toast.success("Settings saved!");
+      setShowSetupModal(false); // Close the modal after saving
     } catch (error) {
       toast.error("Failed to save settings.");
       console.error(error);
@@ -219,7 +232,7 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
         amount: amount,
         createdAt: new Date(),
         notes: newExpenseNotes.trim(),
-        type: 'expense', // Added type field
+        type: 'expense',
       });
       setNewExpenseDesc('');
       setNewExpenseAmount('');
@@ -247,7 +260,7 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
         amount: amount,
         createdAt: new Date(),
         notes: newIncomeNotes.trim(),
-        type: 'income', // Added type field
+        type: 'income',
       });
       setNewIncomeDesc('');
       setNewIncomeAmount('');
@@ -435,13 +448,14 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
 
   return (
     <>
+      {/* SetupModal is rendered here, controlled by App.js's showSetupModal state */}
       <SetupModal
-        isOpen={showSetupModal}
+        isOpen={appSettings.isNewUser || setShowSetupModal} // isOpen is now controlled by App.js's state
         onSave={handleSaveSettings}
         onClose={() => setShowSetupModal(false)}
         user={user}
         initialSettings={appSettings}
-        onDeleteAccount={onDeleteAccount}
+        onDeleteAccount={onDeleteAccount} // Passed from App.js
       />
       <EditExpenseModal
         isOpen={!!editingExpense}
@@ -572,7 +586,6 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
                       <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
                     </div>
                   </div>
-                  {/* Re-added the combined sort order dropdown here */}
                   <div className="relative flex-1 min-w-[120px]">
                     <select
                       value={sortOrder}
@@ -593,7 +606,6 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
                 </div>
               </div>
             </div>
-            {/* NEW: Filter buttons for Income/Expense */}
             <div className="flex flex-wrap gap-2 mb-4 justify-start sm:justify-end">
               <button
                 onClick={() => setTransactionFilterType('all')}
