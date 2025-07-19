@@ -13,7 +13,7 @@ import Dashboard from './components/Dashboard';
 import Login from './components/Login';
 import Footer from './components/Footer';
 import ConfirmationModal from './components/ConfirmationModal';
-import SetupModal from './components/SetupModal';
+import SetupModal from './components/SetupModal'; // Ensure SetupModal is imported
 
 function App() {
   const [user, setUser] = useState(null);
@@ -27,7 +27,7 @@ function App() {
     currency: '$',
     numberFormat: 'comma',
     appTitle: 'My Expense Tracker',
-    isNewUser: false,
+    isNewUser: false, // Default to false
   });
 
   useEffect(() => {
@@ -47,7 +47,8 @@ function App() {
         setShowConfirmEndSessionModal(false);
         setShowConfirmDeleteAccountModal(false);
       } else {
-        // --- NEW: Update lastActivity on any auth state change (login, refresh) ---
+        // Update lastActivity on any auth state change (login, refresh)
+        // This is important for the anonymous user cleanup function
         const userDocRef = doc(db, 'userSettings', currentUser.uid);
         setDoc(userDocRef, { lastActivity: serverTimestamp() }, { merge: true })
           .catch(error => console.error("Error updating last activity on auth change:", error));
@@ -77,25 +78,27 @@ function App() {
             currency: userData.currency || '$',
             numberFormat: userData.numberFormat || 'comma',
             appTitle: userData.appTitle || 'My Expense Tracker',
-            isNewUser: false,
+            isNewUser: false, // Existing user, so not new
           });
           setShowSetupModal(false);
 
-          // --- NEW: Update lastActivity when fetching/loading settings ---
-          // This ensures activity is recorded even if settings aren't explicitly saved.
+          // Update lastActivity when fetching/loading settings for an existing user
           await setDoc(userDocRef, { lastActivity: serverTimestamp() }, { merge: true });
 
         } else {
-          // If no settings exist, it's a new user, show setup modal
+          // If no settings exist, it's a new user.
+          // Set isNewUser to true and show the setup modal.
           setAppSettings({
-            budget: 1000,
-            currency: '$',
-            numberFormat: 'comma',
-            appTitle: 'My Expense Tracker',
-            isNewUser: true,
+            budget: 1000, // Default for new user
+            currency: '$', // Default for new user
+            numberFormat: 'comma', // Default for new user
+            appTitle: 'My Expense Tracker', // Default for new user
+            isNewUser: true, // THIS IS THE KEY FLAG
           });
-          setShowSetupModal(true);
-          // --- NEW: For new users (including new anonymous users), set initial lastActivity ---
+          setShowSetupModal(true); // Show the setup modal for new users
+
+          // For new users (including new anonymous users), set initial lastActivity
+          // This also creates the userSettings document if it doesn't exist
           await setDoc(userDocRef, { lastActivity: serverTimestamp() }, { merge: true });
         }
       } catch (error) {
@@ -114,19 +117,17 @@ function App() {
 
     try {
       const userDocRef = doc(db, 'userSettings', user.uid);
-      // 'settings' object received here already has the encrypted budget from SetupModal
-      // --- NEW: Merge new settings and update lastActivity ---
+      // Merge new settings and update lastActivity
       await setDoc(userDocRef, { ...settings, lastActivity: serverTimestamp() }, { merge: true });
       
       // Update appSettings state with the *decrypted* budget for immediate use in app
-      // This is necessary because the Dashboard needs the actual number, not the encrypted string.
       const decryptedBudgetForState = decryptBudget(settings.budget);
       const effectiveBudgetForState = typeof decryptedBudgetForState === 'number' ? decryptedBudgetForState : 1000;
 
       setAppSettings({
         ...settings,
         budget: effectiveBudgetForState, // Set the decrypted budget here
-        isNewUser: false
+        isNewUser: false // Once settings are saved, they are no longer a "new user"
       });
       setShowSetupModal(false);
       toast.success("Settings saved successfully!");
@@ -227,7 +228,7 @@ function App() {
               onClose={() => setShowSetupModal(false)}
               onSave={handleSaveSettings}
               user={user}
-              initialSettings={appSettings}
+              initialSettings={appSettings} // Pass current appSettings as initialSettings
               onDeleteAccount={handleTriggerDeleteConfirmation}
             />
           </>
