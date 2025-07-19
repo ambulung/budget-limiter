@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import { auth, db } from './firebase';
-import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore"; // Import serverTimestamp
+import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
 import { getFunctions, httpsCallable } from "firebase/functions";
 import { Toaster, toast } from 'react-hot-toast';
 
-// Import the decryptBudget function from your new utility file
 import { decryptBudget } from './utils/encryption';
 
 import Header from './components/Header';
@@ -13,11 +12,11 @@ import Dashboard from './components/Dashboard';
 import Login from './components/Login';
 import Footer from './components/Footer';
 import ConfirmationModal from './components/ConfirmationModal';
-import SetupModal from './components/SetupModal'; // Ensure SetupModal is imported
+import SetupModal from './components/SetupModal';
 
 function App() {
   const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(true); // Keep loading true initially
   const [showSetupModal, setShowSetupModal] = useState(false);
   const [showConfirmEndSessionModal, setShowConfirmEndSessionModal] = useState(false);
   const [showConfirmDeleteAccountModal, setShowConfirmDeleteAccountModal] = useState(false);
@@ -27,14 +26,15 @@ function App() {
     currency: '$',
     numberFormat: 'comma',
     appTitle: 'My Expense Tracker',
-    isNewUser: false, // Default to false
+    isNewUser: false,
   });
 
+  // Effect 1: Listen for Auth State Changes
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
       if (!currentUser) {
-        setLoading(false);
+        setLoading(false); // Only set loading false if no user is found
         // Reset settings to default if no user is logged in
         setAppSettings({
           budget: 1000,
@@ -48,7 +48,6 @@ function App() {
         setShowConfirmDeleteAccountModal(false);
       } else {
         // Update lastActivity on any auth state change (login, refresh)
-        // This is important for the anonymous user cleanup function
         const userDocRef = doc(db, 'userSettings', currentUser.uid);
         setDoc(userDocRef, { lastActivity: serverTimestamp() }, { merge: true })
           .catch(error => console.error("Error updating last activity on auth change:", error));
@@ -57,8 +56,10 @@ function App() {
     return () => unsubscribe();
   }, []);
 
+  // Effect 2: Fetch User Settings when user changes
   useEffect(() => {
     if (!user) {
+      // If user becomes null, ensure loading is false (handled by Effect 1 too)
       setLoading(false);
       return;
     }
@@ -78,33 +79,31 @@ function App() {
             currency: userData.currency || '$',
             numberFormat: userData.numberFormat || 'comma',
             appTitle: userData.appTitle || 'My Expense Tracker',
-            isNewUser: false, // Existing user, so not new
+            isNewUser: false,
           });
-          setShowSetupModal(false);
+          setShowSetupModal(false); // Ensure modal is closed for existing users
 
-          // Update lastActivity when fetching/loading settings for an existing user
           await setDoc(userDocRef, { lastActivity: serverTimestamp() }, { merge: true });
 
         } else {
-          // If no settings exist, it's a new user.
-          // Set isNewUser to true and show the setup modal.
+          // It's a new user, set isNewUser and show setup modal
           setAppSettings({
-            budget: 1000, // Default for new user
-            currency: '$', // Default for new user
-            numberFormat: 'comma', // Default for new user
-            appTitle: 'My Expense Tracker', // Default for new user
-            isNewUser: true, // THIS IS THE KEY FLAG
+            budget: 1000,
+            currency: '$',
+            numberFormat: 'comma',
+            appTitle: 'My Expense Tracker',
+            isNewUser: true, // Crucial for SetupModal to show welcome message
           });
-          setShowSetupModal(true); // Show the setup modal for new users
+          setShowSetupModal(true); // <--- This will now trigger the modal to open
 
-          // For new users (including new anonymous users), set initial lastActivity
-          // This also creates the userSettings document if it doesn't exist
+          // Create the userSettings document with initial lastActivity
           await setDoc(userDocRef, { lastActivity: serverTimestamp() }, { merge: true });
         }
       } catch (error) {
         console.error("Failed to fetch user settings:", error);
         toast.error("Could not load user settings.");
       } finally {
+        // Only set loading to false AFTER all settings logic is complete
         setLoading(false);
       }
     };
@@ -117,17 +116,15 @@ function App() {
 
     try {
       const userDocRef = doc(db, 'userSettings', user.uid);
-      // Merge new settings and update lastActivity
       await setDoc(userDocRef, { ...settings, lastActivity: serverTimestamp() }, { merge: true });
       
-      // Update appSettings state with the *decrypted* budget for immediate use in app
       const decryptedBudgetForState = decryptBudget(settings.budget);
       const effectiveBudgetForState = typeof decryptedBudgetForState === 'number' ? decryptedBudgetForState : 1000;
 
       setAppSettings({
         ...settings,
-        budget: effectiveBudgetForState, // Set the decrypted budget here
-        isNewUser: false // Once settings are saved, they are no longer a "new user"
+        budget: effectiveBudgetForState,
+        isNewUser: false // No longer a new user after saving settings
       });
       setShowSetupModal(false);
       toast.success("Settings saved successfully!");
@@ -138,7 +135,7 @@ function App() {
   };
 
   const executeDeleteAccount = async () => {
-    setShowConfirmDeleteAccountModal(false); // Hide the confirmation modal immediately
+    setShowConfirmDeleteAccountModal(false);
 
     const functions = getFunctions();
     const deleteUserAccountCallable = httpsCallable(functions, 'deleteUserAccount');
@@ -148,7 +145,6 @@ function App() {
       await deleteUserAccountCallable();
       toast.dismiss();
       toast.success("Your account and all data have been deleted.");
-      // Explicitly sign out, though auth state listener should also handle it
       await signOut(auth);
     } catch (error) {
       toast.dismiss();
@@ -164,19 +160,17 @@ function App() {
       signOut(auth).catch(error => {
         console.error("Logout error:", error);
         toast.error("Failed to log out.");
-      }
-      );
+      });
     }
   };
 
   const handleConfirmEndSession = () => {
-    // For guest users, ending session means deleting account
     executeDeleteAccount();
   };
 
   const handleTriggerDeleteConfirmation = () => {
-    setShowSetupModal(false); // Close the SetupModal first
-    setShowConfirmDeleteAccountModal(true); // Open the specific delete confirmation modal
+    setShowSetupModal(false);
+    setShowConfirmDeleteAccountModal(true);
   };
 
   if (loading) {
@@ -224,11 +218,11 @@ function App() {
               appSettings={appSettings}
             />
             <SetupModal
-              isOpen={showSetupModal}
+              isOpen={showSetupModal} // This is controlled by state
               onClose={() => setShowSetupModal(false)}
               onSave={handleSaveSettings}
               user={user}
-              initialSettings={appSettings} // Pass current appSettings as initialSettings
+              initialSettings={appSettings} // Pass current appSettings which includes isNewUser
               onDeleteAccount={handleTriggerDeleteConfirmation}
             />
           </>
