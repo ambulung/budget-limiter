@@ -5,7 +5,7 @@ import { toast } from 'react-hot-toast';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
-import SetupModal from './SetupModal'; // This import is correct
+// REMOVED: import SetupModal from './SetupModal'; 
 import EditExpenseModal from './EditExpenseModal';
 import EditIncomeModal from './EditIncomeModal';
 import ConfirmationModal from './ConfirmationModal';
@@ -15,6 +15,7 @@ const EditIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" className="h-5 
 const DeleteIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-4v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg> );
 const DownloadIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg> );
 const DeleteAllIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-4v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg> );
+
 
 // Helper functions (no changes needed here)
 const formatMoney = (amount, currencySymbol, numberFormat) => {
@@ -54,7 +55,8 @@ const monthNames = [
 ];
 
 // Dashboard Component
-const Dashboard = ({ user, appSettings, setShowSetupModal, onDeleteAccount }) => { // Added setShowSetupModal to props
+// Removed setShowSetupModal from props as Dashboard no longer renders SetupModal
+const Dashboard = ({ user, appSettings, onDeleteAccount }) => { 
   const [editingExpense, setEditingExpense] = useState(null);
   const [editingIncome, setEditingIncome] = useState(null);
   const [showConfirmDeleteAllModal, setShowConfirmDeleteAllModal] = useState(false);
@@ -189,32 +191,9 @@ const Dashboard = ({ user, appSettings, setShowSetupModal, onDeleteAccount }) =>
   }, [user.uid]);
 
   // Handlers for settings, adding/updating/deleting transactions (no changes needed here)
-  const handleSaveSettings = async (settings) => {
-    if (!settings.budget || settings.budget <= 0) {
-      toast.error("Please enter a valid budget.");
-      return;
-    }
-    const userDocRef = doc(db, 'userSettings', user.uid);
-    try {
-      await setDoc(userDocRef, settings, { merge: true });
-      // This updateAppSettings prop is from App.js, which will decrypt the budget
-      // before updating the appSettings state in App.js
-      // The SetupModal itself already handles the encryption before calling onSave.
-      // So, we just pass the settings object as is.
-      // The parent (App.js) will handle the state update with decrypted budget.
-      // We don't need to decrypt here because App.js will do it.
-      // However, if updateAppSettings expects decrypted, then we need to decrypt here.
-      // Assuming updateAppSettings in App.js expects the encrypted budget to be passed
-      // and then decrypts it itself for its state.
-      // Re-reading App.js, it expects the 'settings' object to contain the encrypted budget.
-      // So, this is correct.
-      toast.success("Settings saved!");
-      setShowSetupModal(false); // Close the modal after saving
-    } catch (error) {
-      toast.error("Failed to save settings.");
-      console.error(error);
-    }
-  };
+  // handleSaveSettings is no longer defined here, as it's passed from App.js
+  // and Dashboard doesn't need to save settings directly.
+  // If Dashboard had a direct "Save Settings" button, it would need to be here.
 
   const handleAddExpense = async (e) => {
     e.preventDefault();
@@ -448,15 +427,19 @@ const Dashboard = ({ user, appSettings, setShowSetupModal, onDeleteAccount }) =>
 
   return (
     <>
-      {/* SetupModal is rendered here, controlled by App.js's showSetupModal state */}
+      {/* SetupModal is ONLY rendered in App.js. It should NOT be here. */}
+      {/* This Dashboard component should not be responsible for rendering SetupModal. */}
+      {/* Remove the entire <SetupModal ... /> block from here. */}
+      {/*
       <SetupModal
-        isOpen={appSettings.isNewUser || setShowSetupModal} // isOpen is now controlled by App.js's state
+        isOpen={appSettings.isNewUser || setShowSetupModal} // This line was the problem.
         onSave={handleSaveSettings}
         onClose={() => setShowSetupModal(false)}
         user={user}
         initialSettings={appSettings}
-        onDeleteAccount={onDeleteAccount} // Passed from App.js
+        onDeleteAccount={onDeleteAccount}
       />
+      */}
       <EditExpenseModal
         isOpen={!!editingExpense}
         onClose={() => setEditingExpense(null)}
@@ -590,7 +573,7 @@ const Dashboard = ({ user, appSettings, setShowSetupModal, onDeleteAccount }) =>
                     <select
                       value={sortOrder}
                       onChange={(e) => setSortOrder(e.target.value)}
-                      className="p-2 pr-8 rounded-lg bg-[#2D3748] text-gray-300 border border-gray-700 appearance-none w-full"
+                      className="p-2 pr-8 rounded-lg bg-[#2D3748] text-gray-300 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none w-full"
                     >
                       <option value="newest">Newest First</option>
                       <option value="oldest">Oldest First</option>
