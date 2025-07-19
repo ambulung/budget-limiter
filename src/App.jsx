@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import { auth, db } from './firebase';
-import { doc, getDoc, setDoc } from "firebase/firestore";
+import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
 import { getFunctions, httpsCallable } from "firebase/functions";
 import { Toaster, toast } from 'react-hot-toast';
 
-// Import the decryptBudget function from your new utility file
 import { decryptBudget } from './utils/encryption';
 
 import Header from './components/Header';
@@ -17,7 +16,10 @@ import SetupModal from './components/SetupModal';
 
 function App() {
   const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+  // Use a more descriptive loading state for initial app load vs. data fetching
+  const [initialLoadComplete, setInitialLoadComplete] = useState(false);
+  const [isFetchingSettings, setIsFetchingSettings] = useState(false); // New state for settings fetch
+
   const [showSetupModal, setShowSetupModal] = useState(false);
   const [showConfirmEndSessionModal, setShowConfirmEndSessionModal] = useState(false);
   const [showConfirmDeleteAccountModal, setShowConfirmDeleteAccountModal] = useState(false);
@@ -30,71 +32,88 @@ function App() {
     isNewUser: false,
   });
 
+  // Effect 1: Listen for Auth State Changes (Primary Auth Listener)
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+      setUser(currentUser); // Update user state immediately
+
       if (!currentUser) {
-        setLoading(false);
-        // Reset settings to default if no user is logged in
+        // If no user, reset states and indicate initial load is complete
         setAppSettings({
-          budget: 1000,
-          currency: '$',
-          numberFormat: 'comma',
-          appTitle: 'My Expense Tracker',
-          isNewUser: false,
+          budget: 1000, currency: '$', numberFormat: 'comma', appTitle: 'My Expense Tracker', isNewUser: false,
         });
         setShowSetupModal(false);
         setShowConfirmEndSessionModal(false);
         setShowConfirmDeleteAccountModal(false);
+        setInitialLoadComplete(true); // Initial load complete, show Login
+      } else {
+        // User is logged in (or just logged in). Update last activity.
+        const userDocRef = doc(db, 'userSettings', currentUser.uid);
+        try {
+          await setDoc(userDocRef, { lastActivity: serverTimestamp() }, { merge: true });
+        } catch (error) {
+          console.error("Error updating last activity on auth change:", error);
+        }
+        // After updating activity, the next useEffect will fetch settings
       }
     });
     return () => unsubscribe();
   }, []);
 
+  // Effect 2: Fetch User Settings when user changes (and handle new user flow)
   useEffect(() => {
+    // This effect runs when 'user' state changes.
+    // If user is null, it means we're either logged out or still waiting for auth state.
+    // We only proceed if user is not null.
     if (!user) {
-      setLoading(false);
+      // If initialLoadComplete is already true (meaning no user found), we're done.
+      // If it's false, we're still waiting for auth state to settle, so keep loading.
+      if (initialLoadComplete) {
+        setIsFetchingSettings(false); // No settings to fetch if no user
+      }
       return;
     }
 
     const userDocRef = doc(db, 'userSettings', user.uid);
     const fetchData = async () => {
+      setIsFetchingSettings(true); // Start fetching settings
       try {
         const docSnap = await getDoc(userDocRef);
         if (docSnap.exists()) {
           const userData = docSnap.data();
-
-          // --- IMPORTANT CHANGE HERE ---
-          // Attempt to decrypt the budget when fetching it from Firestore
           const decryptedBudget = decryptBudget(userData.budget);
-          // Use the decrypted budget, or fallback to 1000 if decryption fails or data is missing
           const effectiveBudget = typeof decryptedBudget === 'number' ? decryptedBudget : 1000;
-          // --- END IMPORTANT CHANGE ---
 
           setAppSettings({
-            budget: effectiveBudget, // Use the decrypted/effective budget
+            budget: effectiveBudget,
             currency: userData.currency || '$',
             numberFormat: userData.numberFormat || 'comma',
             appTitle: userData.appTitle || 'My Expense Tracker',
             isNewUser: false,
           });
-          setShowSetupModal(false);
+          setShowSetupModal(false); // Ensure modal is closed for existing users
+
+          await setDoc(userDocRef, { lastActivity: serverTimestamp() }, { merge: true });
+
         } else {
-          // If no settings exist, it's a new user, show setup modal
-          setAppSettings({
-            budget: 1000,
-            currency: '$',
-            numberFormat: 'comma',
-            appTitle: 'My Expense Tracker',
-            isNewUser: true,
-          });
-          setShowSetupModal(true);
+          // It's a new user. Set isNewUser and trigger setup modal.
+          setAppSettings(prevSettings => ({ // Use functional update
+            ...prevSettings, // Keep existing defaults if any
+            isNewUser: true, // Crucial for SetupModal to show welcome message
+          }));
+          setShowSetupModal(true); // <--- This is the key trigger for the modal
+
+          // Create the userSettings document with initial lastActivity
+          await setDoc(userDocRef, { lastActivity: serverTimestamp() }, { merge: true });
         }
       } catch (error) {
         console.error("Failed to fetch user settings:", error);
         toast.error("Could not load user settings.");
+        // Decide how to handle errors for new users (e.g., show a generic error, or fallback to login)
+        // For now, we'll still try to show the login screen.
       } finally {
-        setLoading(false);
+        setIsFetchingSettings(false); // Settings fetch complete
+        setInitialLoadComplete(true); // Indicate that the initial app data load is done
       }
     };
 
@@ -106,20 +125,17 @@ function App() {
 
     try {
       const userDocRef = doc(db, 'userSettings', user.uid);
-      // 'settings' object received here already has the encrypted budget from SetupModal
-      await setDoc(userDocRef, settings, { merge: true });
+      await setDoc(userDocRef, { ...settings, lastActivity: serverTimestamp() }, { merge: true });
       
-      // Update appSettings state with the *decrypted* budget for immediate use in app
-      // This is necessary because the Dashboard needs the actual number, not the encrypted string.
       const decryptedBudgetForState = decryptBudget(settings.budget);
       const effectiveBudgetForState = typeof decryptedBudgetForState === 'number' ? decryptedBudgetForState : 1000;
 
       setAppSettings({
         ...settings,
-        budget: effectiveBudgetForState, // Set the decrypted budget here
-        isNewUser: false
+        budget: effectiveBudgetForState,
+        isNewUser: false // No longer a new user after saving settings
       });
-      setShowSetupModal(false);
+      setShowSetupModal(false); // Close modal after save
       toast.success("Settings saved successfully!");
     } catch (error) {
       console.error("Error saving settings:", error);
@@ -128,7 +144,7 @@ function App() {
   };
 
   const executeDeleteAccount = async () => {
-    setShowConfirmDeleteAccountModal(false); // Hide the confirmation modal immediately
+    setShowConfirmDeleteAccountModal(false);
 
     const functions = getFunctions();
     const deleteUserAccountCallable = httpsCallable(functions, 'deleteUserAccount');
@@ -138,7 +154,6 @@ function App() {
       await deleteUserAccountCallable();
       toast.dismiss();
       toast.success("Your account and all data have been deleted.");
-      // Explicitly sign out, though auth state listener should also handle it
       await signOut(auth);
     } catch (error) {
       toast.dismiss();
@@ -154,22 +169,21 @@ function App() {
       signOut(auth).catch(error => {
         console.error("Logout error:", error);
         toast.error("Failed to log out.");
-      }
-      );
+      });
     }
   };
 
   const handleConfirmEndSession = () => {
-    // For guest users, ending session means deleting account
     executeDeleteAccount();
   };
 
   const handleTriggerDeleteConfirmation = () => {
-    setShowSetupModal(false); // Close the SetupModal first
-    setShowConfirmDeleteAccountModal(true); // Open the specific delete confirmation modal
+    setShowSetupModal(false);
+    setShowConfirmDeleteAccountModal(true);
   };
 
-  if (loading) {
+  // Render loading screen until initial auth state and settings fetch are complete
+  if (!initialLoadComplete || (user && isFetchingSettings)) {
     return (
       <div className="flex justify-center items-center h-screen bg-slate-100 dark:bg-gray-900">
         <p className="text-xl text-gray-600 dark:text-gray-300">Loading...</p>
@@ -214,11 +228,11 @@ function App() {
               appSettings={appSettings}
             />
             <SetupModal
-              isOpen={showSetupModal}
+              isOpen={showSetupModal} // This is controlled by state
               onClose={() => setShowSetupModal(false)}
               onSave={handleSaveSettings}
               user={user}
-              initialSettings={appSettings}
+              initialSettings={appSettings} // Pass current appSettings which includes isNewUser
               onDeleteAccount={handleTriggerDeleteConfirmation}
             />
           </>

@@ -3,21 +3,32 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>BUDGET.LIMIT</title>
+    <title>BUDGET.LIMIT - Smart Personal Finance Management</title>
+    <meta name="description" content="Budget.Limit is a powerful and easy-to-use personal finance app designed to help you track income, manage expenses, and achieve your financial goals. Start budgeting smarter today!" />
+    <meta name="robots" content="index, follow" /> 
 
-    <link rel="icon" href="/favicon.ico" sizes="any">
-    <link rel="icon" type="image/png" sizes="96x96" href="/favicon-96x96.png">
-    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
-    <link rel="manifest" href="/site.webmanifest">
-    <link rel="icon" type="image/png" sizes="192x192" href="/web-app-manifest-192x192.png">
-    <link rel="icon" type="image/png" sizes="512x512" href="/web-app-manifest-512x512.png">
+    <!-- Content Security Policy (CSP) -->
+    <!-- This is a robust starting point for Firebase projects. -->
+    <!-- You may need to add more sources depending on other third-party services you use. -->
+    <meta http-equiv="Content-Security-Policy" content="
+      default-src 'self';
+      script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.gstatic.com https://www.google.com https://apis.google.com;
+      style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+      img-src 'self' data: https://www.gstatic.com;
+      font-src 'self' https://fonts.gstatic.com;
+      connect-src 'self' https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseinstallations.googleapis.com https://www.google-analytics.com https://www.google.com https://www.recaptcha.net;
+      frame-src 'self' https://www.google.com https://www.recaptcha.net;
+      object-src 'none';
+      base-uri 'self';
+      form-action 'self';
+      upgrade-insecure-requests;
+    ">
 
-    <!-- If your favicon.svg is monochrome, uncomment the line below and set a color -->
-    <!-- <link rel="mask-icon" href="/favicon.svg" color="#000000"> -->
+    <!-- Favicons and App Icons -->
+    <!-- ... (your existing favicons) ... -->
 
-    <!-- If you want to set a theme color for the browser UI, uncomment the line below -->
-    <!-- <meta name="theme-color" content="#ffffff"> -->
-
+    <!-- Theme Color for Browser UI -->
+    <meta name="theme-color" content="#2563EB" /> 
   </head>
   <body>
     <div id="root"></div>
