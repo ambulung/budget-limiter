@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { onAuthStateChanged, signOut } from "firebase/auth";
-import { auth, db } from './firebase'; // Ensure 'db' is imported
+import { auth, db } from './firebase';
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { getFunctions, httpsCallable } from "firebase/functions";
 import { Toaster, toast } from 'react-hot-toast';
@@ -122,7 +122,7 @@ function App() {
         budget: effectiveBudgetForState, // Set the decrypted budget here
         isNewUser: false // No longer a new user after saving settings
       });
-      setShowSetupModal(false);
+      setShowSetupModal(false); // Close the modal after saving
       toast.success("Settings saved successfully!");
     } catch (error) {
       console.error("Error saving settings:", error);
@@ -223,7 +223,9 @@ function App() {
               user={user}
               appSettings={appSettings}
               // Pass setShowSetupModal to Dashboard if Dashboard needs to trigger it
+              // (e.g., if Dashboard itself has a button to open settings)
               setShowSetupModal={setShowSetupModal} 
+              onDeleteAccount={handleTriggerDeleteConfirmation} // Also pass this down if Dashboard needs it
             />
             {/* SetupModal is controlled by showSetupModal state */}
             <SetupModal

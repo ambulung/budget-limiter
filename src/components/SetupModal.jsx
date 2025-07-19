@@ -1,11 +1,7 @@
-// src/components/SetupModal.jsx
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { toast } from 'react-hot-toast';
 // Import from the new utility file
 import { encryptBudget, decryptBudget } from '../utils/encryption';
-
-// ... (no more ENCRYPTION_SECRET_KEY or encryptBudget/decryptBudget functions here) ...
 
 const SetupModal = ({ isOpen, onSave, onClose, user, initialSettings, onDeleteAccount }) => {
   const [title, setTitle] = useState('');
@@ -17,22 +13,23 @@ const SetupModal = ({ isOpen, onSave, onClose, user, initialSettings, onDeleteAc
 
   // Memoize the decryption function from the utility file
   const memoizedDecryptBudget = useCallback((encryptedBudget) => {
-    return decryptBudget(encryptedBudget); // Key is now passed internally by the util function
+    return decryptBudget(encryptedBudget);
   }, []);
 
   useEffect(() => {
     if (isOpen) {
+      // When modal opens, initialize state from initialSettings
       const decryptedBudgetValue = initialSettings.budget
         ? memoizedDecryptBudget(initialSettings.budget)
         : null;
 
       const effectiveBudgetValue = typeof decryptedBudgetValue === 'number'
         ? decryptedBudgetValue
-        : 1000;
+        : 1000; // Fallback if decryption fails or budget is not a number
 
-      setTitle(initialSettings.appTitle || '');
+      setTitle(initialSettings.appTitle || 'My Expense Tracker'); // Provide a default title
       setRawBudget(effectiveBudgetValue);
-      setDisplayBudget(Number(effectiveBudgetValue).toFixed(2));
+      setDisplayBudget(Number(effectiveBudgetValue).toFixed(2)); // Format for display
 
       setNumberFormat(initialSettings.numberFormat || 'comma');
 
@@ -56,6 +53,7 @@ const SetupModal = ({ isOpen, onSave, onClose, user, initialSettings, onDeleteAc
   };
 
   const handleBudgetBlur = () => {
+    // Format the displayed budget when the input loses focus
     setDisplayBudget(rawBudget.toFixed(2));
   };
 
@@ -77,30 +75,35 @@ const SetupModal = ({ isOpen, onSave, onClose, user, initialSettings, onDeleteAc
     }
 
     // Use the encryptBudget function from the utility file
-    const encryptedBudget = encryptBudget(rawBudget); // Key is now passed internally
+    const encryptedBudget = encryptBudget(rawBudget);
 
     if (encryptedBudget === null) {
       toast.error("Failed to encrypt budget. Please check configuration and try again.");
       return;
     }
 
+    // Call the onSave prop from the parent (App.js)
+    // App.js's handleSaveSettings will then close the modal
     onSave({
       appTitle: title,
-      budget: encryptedBudget,
+      budget: encryptedBudget, // Pass the encrypted budget
       currency: finalCurrency,
       numberFormat: numberFormat,
     });
   };
 
   const handleDeleteButtonClick = () => {
+    // Call the onDeleteAccount prop from the parent (App.js)
     onDeleteAccount();
   };
 
+  // If isOpen is false, don't render anything
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-60 z-50 flex justify-center items-center p-4">
       <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-2xl w-full max-w-md relative">
+        {/* Close button (X icon) */}
         <button onClick={onClose} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors">
           <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
         </button>
