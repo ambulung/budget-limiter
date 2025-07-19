@@ -9,14 +9,22 @@
 
     <!-- Content Security Policy (CSP) -->
     <!-- This is a robust starting point for Firebase projects. -->
-    <!-- You may need to add more sources depending on other third-party services you use. -->
+    <!-- It now includes the necessary domain for Firebase App Check. -->
     <meta http-equiv="Content-Security-Policy" content="
       default-src 'self';
       script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.gstatic.com https://www.google.com https://apis.google.com;
       style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
       img-src 'self' data: https://www.gstatic.com;
       font-src 'self' https://fonts.gstatic.com;
-      connect-src 'self' https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseinstallations.googleapis.com https://www.google-analytics.com https://www.google.com https://www.recaptcha.net;
+      connect-src 'self' 
+                  https://firestore.googleapis.com 
+                  https://identitytoolkit.googleapis.com 
+                  https://securetoken.googleapis.com 
+                  https://firebaseinstallations.googleapis.com 
+                  https://www.google-analytics.com 
+                  https://www.google.com 
+                  https://www.recaptcha.net 
+                  https://content-firebaseappcheck.googleapis.com; /* ADDED THIS FOR APP CHECK */
       frame-src 'self' https://www.google.com https://www.recaptcha.net;
       object-src 'none';
       base-uri 'self';
