@@ -8,8 +8,8 @@
     <meta name="robots" content="index, follow" /> 
 
     <!-- Content Security Policy (CSP) -->
-    <!-- IMPORTANT: Comments inside the 'content' attribute are NOT allowed by CSP. -->
-    <!-- They have been removed from the string below. -->
+    <!-- This CSP now includes all necessary domains for Firebase services and reCAPTCHA. -->
+    <!-- Comments are placed outside the 'content' attribute as they are not allowed within it. -->
     <meta http-equiv="Content-Security-Policy" content="
       default-src 'self';
       script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.gstatic.com https://www.google.com https://apis.google.com;
@@ -24,7 +24,8 @@
                   https://www.google-analytics.com 
                   https://www.google.com 
                   https://www.recaptcha.net 
-                  https://content-firebaseappcheck.googleapis.com;
+                  https://content-firebaseappcheck.googleapis.com 
+                  https://us-central1-my-budget-limiter.cloudfunctions.net;
       frame-src 'self' https://www.google.com https://www.recaptcha.net;
       object-src 'none';
       base-uri 'self';
@@ -43,6 +44,7 @@
 
     <!-- reCAPTCHA v3 script -->
     <!-- IMPORTANT: Replace YOUR_RECAPTCHA_V3_SITE_KEY_HERE with your actual public reCAPTCHA v3 site key. -->
+    <!-- This key is public by design and is needed for the reCAPTCHA JavaScript to load. -->
     <script src="https://www.google.com/recaptcha/api.js?render=6LftDX8rAAAAAE0QTfbNNRavM60DjOUBWrQwFSC5"></script>
 
   </head>
