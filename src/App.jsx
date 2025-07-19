@@ -114,7 +114,8 @@ function App() {
       // Update appSettings state with the *decrypted* budget for immediate use in app
       // This is necessary because the Dashboard needs the actual number, not the encrypted string.
       const decryptedBudgetForState = decryptBudget(settings.budget);
-      const effectiveBudgetForState = typeof decryptedBudgetForState === 'number' ? decryptedBudgetValue : 1000;
+      // FIX: Corrected variable name from 'decryptedBudgetValue' to 'decryptedBudgetForState'
+      const effectiveBudgetForState = typeof decryptedBudgetForState === 'number' ? decryptedBudgetForState : 1000;
 
       setAppSettings({
         ...settings,
@@ -226,7 +227,7 @@ function App() {
             />
             {/* SetupModal is controlled by showSetupModal state */}
             <SetupModal
-              isOpen={showSetupModal}
+              isOpen={showSetupModal} // This controls the modal visibility
               onClose={() => setShowSetupModal(false)}
               onSave={handleSaveSettings}
               user={user}
