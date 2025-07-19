@@ -16,7 +16,10 @@ import SetupModal from './components/SetupModal';
 
 function App() {
   const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true); // Keep loading true initially
+  // Use a more descriptive loading state for initial app load vs. data fetching
+  const [initialLoadComplete, setInitialLoadComplete] = useState(false);
+  const [isFetchingSettings, setIsFetchingSettings] = useState(false); // New state for settings fetch
+
   const [showSetupModal, setShowSetupModal] = useState(false);
   const [showConfirmEndSessionModal, setShowConfirmEndSessionModal] = useState(false);
   const [showConfirmDeleteAccountModal, setShowConfirmDeleteAccountModal] = useState(false);
@@ -29,48 +32,55 @@ function App() {
     isNewUser: false,
   });
 
-  // Effect 1: Listen for Auth State Changes
+  // Effect 1: Listen for Auth State Changes (Primary Auth Listener)
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+      setUser(currentUser); // Update user state immediately
+
       if (!currentUser) {
-        setLoading(false); // Only set loading false if no user is found
-        // Reset settings to default if no user is logged in
+        // If no user, reset states and indicate initial load is complete
         setAppSettings({
-          budget: 1000,
-          currency: '$',
-          numberFormat: 'comma',
-          appTitle: 'My Expense Tracker',
-          isNewUser: false,
+          budget: 1000, currency: '$', numberFormat: 'comma', appTitle: 'My Expense Tracker', isNewUser: false,
         });
         setShowSetupModal(false);
         setShowConfirmEndSessionModal(false);
         setShowConfirmDeleteAccountModal(false);
+        setInitialLoadComplete(true); // Initial load complete, show Login
       } else {
-        // Update lastActivity on any auth state change (login, refresh)
+        // User is logged in (or just logged in). Update last activity.
         const userDocRef = doc(db, 'userSettings', currentUser.uid);
-        setDoc(userDocRef, { lastActivity: serverTimestamp() }, { merge: true })
-          .catch(error => console.error("Error updating last activity on auth change:", error));
+        try {
+          await setDoc(userDocRef, { lastActivity: serverTimestamp() }, { merge: true });
+        } catch (error) {
+          console.error("Error updating last activity on auth change:", error);
+        }
+        // After updating activity, the next useEffect will fetch settings
       }
     });
     return () => unsubscribe();
   }, []);
 
-  // Effect 2: Fetch User Settings when user changes
+  // Effect 2: Fetch User Settings when user changes (and handle new user flow)
   useEffect(() => {
+    // This effect runs when 'user' state changes.
+    // If user is null, it means we're either logged out or still waiting for auth state.
+    // We only proceed if user is not null.
     if (!user) {
-      // If user becomes null, ensure loading is false (handled by Effect 1 too)
-      setLoading(false);
+      // If initialLoadComplete is already true (meaning no user found), we're done.
+      // If it's false, we're still waiting for auth state to settle, so keep loading.
+      if (initialLoadComplete) {
+        setIsFetchingSettings(false); // No settings to fetch if no user
+      }
       return;
     }
 
     const userDocRef = doc(db, 'userSettings', user.uid);
     const fetchData = async () => {
+      setIsFetchingSettings(true); // Start fetching settings
       try {
         const docSnap = await getDoc(userDocRef);
         if (docSnap.exists()) {
           const userData = docSnap.data();
-
           const decryptedBudget = decryptBudget(userData.budget);
           const effectiveBudget = typeof decryptedBudget === 'number' ? decryptedBudget : 1000;
 
@@ -86,15 +96,12 @@ function App() {
           await setDoc(userDocRef, { lastActivity: serverTimestamp() }, { merge: true });
 
         } else {
-          // It's a new user, set isNewUser and show setup modal
-          setAppSettings({
-            budget: 1000,
-            currency: '$',
-            numberFormat: 'comma',
-            appTitle: 'My Expense Tracker',
+          // It's a new user. Set isNewUser and trigger setup modal.
+          setAppSettings(prevSettings => ({ // Use functional update
+            ...prevSettings, // Keep existing defaults if any
             isNewUser: true, // Crucial for SetupModal to show welcome message
-          });
-          setShowSetupModal(true); // <--- This will now trigger the modal to open
+          }));
+          setShowSetupModal(true); // <--- This is the key trigger for the modal
 
           // Create the userSettings document with initial lastActivity
           await setDoc(userDocRef, { lastActivity: serverTimestamp() }, { merge: true });
@@ -102,9 +109,11 @@ function App() {
       } catch (error) {
         console.error("Failed to fetch user settings:", error);
         toast.error("Could not load user settings.");
+        // Decide how to handle errors for new users (e.g., show a generic error, or fallback to login)
+        // For now, we'll still try to show the login screen.
       } finally {
-        // Only set loading to false AFTER all settings logic is complete
-        setLoading(false);
+        setIsFetchingSettings(false); // Settings fetch complete
+        setInitialLoadComplete(true); // Indicate that the initial app data load is done
       }
     };
 
@@ -126,7 +135,7 @@ function App() {
         budget: effectiveBudgetForState,
         isNewUser: false // No longer a new user after saving settings
       });
-      setShowSetupModal(false);
+      setShowSetupModal(false); // Close modal after save
       toast.success("Settings saved successfully!");
     } catch (error) {
       console.error("Error saving settings:", error);
@@ -173,7 +182,8 @@ function App() {
     setShowConfirmDeleteAccountModal(true);
   };
 
-  if (loading) {
+  // Render loading screen until initial auth state and settings fetch are complete
+  if (!initialLoadComplete || (user && isFetchingSettings)) {
     return (
       <div className="flex justify-center items-center h-screen bg-slate-100 dark:bg-gray-900">
         <p className="text-xl text-gray-600 dark:text-gray-300">Loading...</p>
