@@ -1,23 +1,21 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { Helmet } from 'react-helmet-async'; // Import Helmet
 import { db } from '../firebase';
 import { doc, getDoc, setDoc, collection, addDoc, onSnapshot, deleteDoc, query, orderBy, updateDoc } from "firebase/firestore";
 import { toast } from 'react-hot-toast';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
-// REMOVED: import SetupModal from './SetupModal'; 
+import SetupModal from './SetupModal';
 import EditExpenseModal from './EditExpenseModal';
 import EditIncomeModal from './EditIncomeModal';
 import ConfirmationModal from './ConfirmationModal';
 
-// Icon components (no changes needed here)
 const EditIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.5L15.232 5.232z" /></svg> );
 const DeleteIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-4v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg> );
 const DownloadIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg> );
 const DeleteAllIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-4v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg> );
 
-
-// Helper functions (no changes needed here)
 const formatMoney = (amount, currencySymbol, numberFormat) => {
   const num = Number(amount);
   if (isNaN(num)) return `${currencySymbol || '$'}0.00`;
@@ -54,9 +52,7 @@ const monthNames = [
   "July", "August", "September", "October", "November", "December"
 ];
 
-// Dashboard Component
-// Removed setShowSetupModal from props as Dashboard no longer renders SetupModal
-const Dashboard = ({ user, appSettings, onDeleteAccount }) => { 
+const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updateAppSettings, onDeleteAccount }) => {
   const [editingExpense, setEditingExpense] = useState(null);
   const [editingIncome, setEditingIncome] = useState(null);
   const [showConfirmDeleteAllModal, setShowConfirmDeleteAllModal] = useState(false);
@@ -76,12 +72,8 @@ const Dashboard = ({ user, appSettings, onDeleteAccount }) => {
   const [selectedYear, setSelectedYear] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
 
-  const [sortOrder, setSortOrder] = useState('newest');
-  const [transactionFilterType, setTransactionFilterType] = useState('all');
-
   const { budget, currency, numberFormat, appTitle } = appSettings;
 
-  // Calculations for budget summary (no changes needed here)
   const totalExpenses = expenses.reduce((sum, expense) => sum + expense.amount, 0);
   const totalIncome = incomes.reduce((sum, income) => sum + income.amount, 0);
   const remainingBudget = (budget + totalIncome) - totalExpenses;
@@ -89,18 +81,11 @@ const Dashboard = ({ user, appSettings, onDeleteAccount }) => {
     ? (((budget + totalIncome) - totalExpenses) / (budget + totalIncome) * 100).toFixed(2)
     : 0;
 
-  // Memoized filtered and sorted transactions (no changes needed here)
   const filteredTransactions = useMemo(() => {
     let transactions = [
       ...expenses.map(e => ({ ...e, type: 'expense' })),
       ...incomes.map(i => ({ ...i, type: 'income' }))
     ];
-
-    if (transactionFilterType === 'income') {
-      transactions = transactions.filter(t => t.type === 'income');
-    } else if (transactionFilterType === 'expense') {
-      transactions = transactions.filter(t => t.type === 'expense');
-    }
 
     if (selectedMonth !== '') {
       transactions = transactions.filter(t => {
@@ -124,29 +109,9 @@ const Dashboard = ({ user, appSettings, onDeleteAccount }) => {
       );
     }
 
-    transactions.sort((a, b) => {
-      switch (sortOrder) {
-        case 'newest':
-          return b.createdAt.toDate() - a.createdAt.toDate();
-        case 'oldest':
-          return a.createdAt.toDate() - b.createdAt.toDate();
-        case 'amount_asc':
-          return a.amount - b.amount;
-        case 'amount_desc':
-          return b.amount - a.amount;
-        case 'description_asc':
-          return a.description.localeCompare(b.description);
-        case 'description_desc':
-          return b.description.localeCompare(a.description);
-        default:
-          return b.createdAt.toDate() - a.createdAt.toDate();
-      }
-    });
+    return transactions.sort((a, b) => b.createdAt.toDate() - a.createdAt.toDate());
+  }, [expenses, incomes, selectedMonth, selectedYear, searchTerm]);
 
-    return transactions;
-  }, [expenses, incomes, selectedMonth, selectedYear, searchTerm, sortOrder, transactionFilterType]);
-
-  // Memoized available years (no changes needed here)
   const availableYears = useMemo(() => {
     const years = new Set();
     [...expenses, ...incomes].forEach(t => {
@@ -157,7 +122,6 @@ const Dashboard = ({ user, appSettings, onDeleteAccount }) => {
     return Array.from(years).sort((a, b) => b - a);
   }, [expenses, incomes]);
 
-  // Helper functions for progress bar styling (no changes needed here)
   const getTextColorClass = () => {
     const progressNum = parseFloat(remainingProgress);
     if (progressNum <= 20) return 'text-red-500';
@@ -172,10 +136,10 @@ const Dashboard = ({ user, appSettings, onDeleteAccount }) => {
     return 'bg-green-500';
   };
 
-  // Firestore listener for transactions (no changes needed here)
   useEffect(() => {
     if (!user.uid) return;
 
+    // Listen to the single 'transactions' subcollection
     const transactionsColRef = collection(db, 'userSettings', user.uid, 'transactions');
     const qTransactions = query(transactionsColRef, orderBy('createdAt', 'desc'));
 
@@ -190,10 +154,22 @@ const Dashboard = ({ user, appSettings, onDeleteAccount }) => {
     };
   }, [user.uid]);
 
-  // Handlers for settings, adding/updating/deleting transactions (no changes needed here)
-  // handleSaveSettings is no longer defined here, as it's passed from App.js
-  // and Dashboard doesn't need to save settings directly.
-  // If Dashboard had a direct "Save Settings" button, it would need to be here.
+  const handleSaveSettings = async (settings) => {
+    if (!settings.budget || settings.budget <= 0) {
+      toast.error("Please enter a valid budget.");
+      return;
+    }
+    const userDocRef = doc(db, 'userSettings', user.uid);
+    try {
+      await setDoc(userDocRef, settings, { merge: true });
+      updateAppSettings(prev => ({...prev, ...settings}));
+      setShowSetupModal(false);
+      toast.success("Settings saved!");
+    } catch (error) {
+      toast.error("Failed to save settings.");
+      console.error(error);
+    }
+  };
 
   const handleAddExpense = async (e) => {
     e.preventDefault();
@@ -211,7 +187,7 @@ const Dashboard = ({ user, appSettings, onDeleteAccount }) => {
         amount: amount,
         createdAt: new Date(),
         notes: newExpenseNotes.trim(),
-        type: 'expense',
+        type: 'expense', // Added type field
       });
       setNewExpenseDesc('');
       setNewExpenseAmount('');
@@ -239,7 +215,7 @@ const Dashboard = ({ user, appSettings, onDeleteAccount }) => {
         amount: amount,
         createdAt: new Date(),
         notes: newIncomeNotes.trim(),
-        type: 'income',
+        type: 'income', // Added type field
       });
       setNewIncomeDesc('');
       setNewIncomeAmount('');
@@ -427,19 +403,20 @@ const Dashboard = ({ user, appSettings, onDeleteAccount }) => {
 
   return (
     <>
-      {/* SetupModal is ONLY rendered in App.js. It should NOT be here. */}
-      {/* This Dashboard component should not be responsible for rendering SetupModal. */}
-      {/* Remove the entire <SetupModal ... /> block from here. */}
-      {/*
+      <Helmet>
+        <title>Your Dashboard | BUDGET.LIMIT</title>
+        <meta name="description" content="Manage your personal budget, track income and expenses, and monitor your financial goals with your custom dashboard." />
+        <meta name="robots" content="noindex, nofollow" /> {/* IMPORTANT: Prevents indexing of private user data */}
+      </Helmet>
+
       <SetupModal
-        isOpen={appSettings.isNewUser || setShowSetupModal} // This line was the problem.
+        isOpen={showSetupModal}
         onSave={handleSaveSettings}
         onClose={() => setShowSetupModal(false)}
         user={user}
         initialSettings={appSettings}
         onDeleteAccount={onDeleteAccount}
       />
-      */}
       <EditExpenseModal
         isOpen={!!editingExpense}
         onClose={() => setEditingExpense(null)}
@@ -569,45 +546,10 @@ const Dashboard = ({ user, appSettings, onDeleteAccount }) => {
                       <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
                     </div>
                   </div>
-                  <div className="relative flex-1 min-w-[120px]">
-                    <select
-                      value={sortOrder}
-                      onChange={(e) => setSortOrder(e.target.value)}
-                      className="p-2 pr-8 rounded-lg bg-[#2D3748] text-gray-300 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none w-full"
-                    >
-                      <option value="newest">Newest First</option>
-                      <option value="oldest">Oldest First</option>
-                      <option value="amount_asc">Amount (Low to High)</option>
-                      <option value="amount_desc">Amount (High to Low)</option>
-                      <option value="description_asc">Description (A-Z)</option>
-                      <option value="description_desc">Description (Z-A)</option>
-                    </select>
-                    <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
-                      <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
-                    </div>
-                  </div>
                 </div>
               </div>
             </div>
             <div className="flex flex-wrap gap-2 mb-4 justify-start sm:justify-end">
-              <button
-                onClick={() => setTransactionFilterType('all')}
-                className={`px-4 py-2 rounded-lg font-semibold transition-colors ${transactionFilterType === 'all' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-800 dark:bg-gray-700 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600'}`}
-              >
-                Show All
-              </button>
-              <button
-                onClick={() => setTransactionFilterType('income')}
-                className={`px-4 py-2 rounded-lg font-semibold transition-colors ${transactionFilterType === 'income' ? 'bg-green-600 text-white' : 'bg-gray-200 text-gray-800 dark:bg-gray-700 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600'}`}
-              >
-                See Income
-              </button>
-              <button
-                onClick={() => setTransactionFilterType('expense')}
-                className={`px-4 py-2 rounded-lg font-semibold transition-colors ${transactionFilterType === 'expense' ? 'bg-red-600 text-white' : 'bg-gray-200 text-gray-800 dark:bg-gray-700 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600'}`}
-              >
-                See Expenses
-              </button>
               <button
                 onClick={handleDownloadPdf}
                 className="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors flex-shrink-0"

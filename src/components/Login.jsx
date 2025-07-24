@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Helmet } from 'react-helmet-async'; // Import Helmet
 import { auth, googleProvider } from '../firebase';
 import {
   createUserWithEmailAndPassword,
@@ -121,6 +122,11 @@ const Login = () => {
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-slate-100 dark:bg-gray-900 p-4">
+      <Helmet>
+        <title>{isLoginView ? 'Login to BUDGET.LIMIT' : 'Sign Up for BUDGET.LIMIT'}</title>
+        <meta name="description" content={isLoginView ? "Log in to your BUDGET.LIMIT account to manage your finances." : "Create a new account with BUDGET.LIMIT to start tracking your budget."} />
+        <meta name="robots" content="noindex, nofollow" /> {/* IMPORTANT for login pages */}
+      </Helmet>
 
       {/* --- MOVED AND STYLED: BRANDING HEADER --- */}
       <h2 className="text-3xl font-extrabold tracking-wide mb-6 text-black dark:text-white">
@@ -242,10 +248,6 @@ const Login = () => {
             <GuestIcon />
             {isProcessing && processingAction === 'guest' ? 'Signing in...' : 'Continue as Guest'}
           </button>
-          {/* NEW: Anonymous user data retention message */}
-          <p className="text-sm text-gray-500 dark:text-gray-400 text-center mt-2">
-            Guest data is temporary and will be removed after 24 hours of inactivity.
-          </p>
         </div>
 
       </div>
