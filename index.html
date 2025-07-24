@@ -8,13 +8,11 @@
     <meta name="robots" content="index, follow" /> 
 
     <!-- Content Security Policy (CSP) -->
-    <!-- This CSP now includes all necessary domains for Firebase services and reCAPTCHA. -->
-    <!-- Comments are placed outside the 'content' attribute as they are not allowed within it. -->
     <meta http-equiv="Content-Security-Policy" content="
       default-src 'self';
       script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.gstatic.com https://www.google.com https://apis.google.com;
       style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
-      img-src 'self' data: https://www.gstatic.com;
+      img-src 'self' data: https://www.gstatic.com https://www.google.com; /* Added https://www.google.com for Google profile pictures etc. */
       font-src 'self' https://fonts.gstatic.com;
       connect-src 'self' 
                   https://firestore.googleapis.com 
@@ -25,8 +23,9 @@
                   https://www.google.com 
                   https://www.recaptcha.net 
                   https://content-firebaseappcheck.googleapis.com 
-                  https://us-central1-my-budget-limiter.cloudfunctions.net;
-      frame-src 'self' https://www.google.com https://www.recaptcha.net;
+                  https://us-central1-my-budget-limiter.cloudfunctions.net
+                  https://*.firebaseio.com; /* Added for Realtime Database */
+      frame-src 'self' https://www.google.com https://www.recaptcha.net https://*.firebaseapp.com; /* CRITICAL: Added Firebase App domains */
       object-src 'none';
       base-uri 'self';
       form-action 'self';
@@ -43,8 +42,6 @@
     <meta name="theme-color" content="#2563EB" /> 
 
     <!-- reCAPTCHA v3 script -->
-    <!-- IMPORTANT: Replace YOUR_RECAPTCHA_V3_SITE_KEY_HERE with your actual public reCAPTCHA v3 site key. -->
-    <!-- This key is public by design and is needed for the reCAPTCHA JavaScript to load. -->
     <script src="https://www.google.com/recaptcha/api.js?render=6LftDX8rAAAAAE0QTfbNNRavM60DjOUBWrQwFSC5"></script>
 
   </head>
