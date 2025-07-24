@@ -4,10 +4,14 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>BUDGET.LIMIT - Smart Personal Finance Management</title>
-    <meta name="description" content="Budget.Limit is a powerful and easy-to-use personal finance app designed to help you track income, manage expenses, and achieve your financial goals. Start budgeting smarter today!" />
+    <meta name="description" content="Budget.Limit is a powerful and easy-to-use personal finance app designed to help you track income, manage expenses, and achieve your financial goals." />
     <meta name="robots" content="index, follow" /> 
 
-    <!-- Content Security Policy (CSP) -->
+    <!-- 
+      Content Security Policy (CSP)
+      The 'content' attribute MUST be a single line without line breaks.
+      This policy allows Firebase, Google Fonts, and reCAPTCHA to function correctly.
+    -->
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.gstatic.com https://www.google.com https://apis.google.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: https://www.gstatic.com https://www.google.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseinstallations.googleapis.com https://www.google-analytics.com https://www.google.com https://www.recaptcha.net https://content-firebaseappcheck.googleapis.com https://us-central1-my-budget-limiter.cloudfunctions.net https://*.firebaseio.com; frame-src 'self' https://www.google.com https://www.recaptcha.net https://*.firebaseapp.com; object-src 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests;">
 
     <!-- Favicons and App Icons -->
@@ -19,9 +23,12 @@
     <!-- Theme Color for Browser UI -->
     <meta name="theme-color" content="#2563EB" /> 
 
-    <!-- REMOVED OR COMMENTED OUT: reCAPTCHA v3 script (let react-google-recaptcha-v3 handle it) -->
-    <!-- <script src="https://www.google.com/recaptcha/api.js?render=6LftDX8rAAAAAE0QTfbNNRavM60DjOUBWrQwFSC5"></script> -->
-
+    <!-- 
+      reCAPTCHA v3 script for Firebase App Check
+      IMPORTANT: This script is REQUIRED for App Check to work.
+      Replace the key with your actual public reCAPTCHA v3 site key.
+    -->
+    <script src="https://www.google.com/recaptcha/api.js?render=6LftDX8rAAAAAE0QTfbNNRavM60DjOUBWrQwFSC5"></script>
   </head>
   <body>
     <div id="root"></div>
