@@ -1,27 +1,27 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Helmet } from 'react-helmet-async'; // Import Helmet
+import { Helmet } from 'react-helmet-async';
 import { db } from '../firebase';
 import { doc, getDoc, setDoc, collection, addDoc, onSnapshot, deleteDoc, query, orderBy, updateDoc } from "firebase/firestore";
 import { toast } from 'react-hot-toast';
 import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
+import autoTable from 'jspdf-autotable'; // Ensure this is correctly imported and used by jspdf
 
 import SetupModal from './SetupModal';
 import EditExpenseModal from './EditExpenseModal';
 import EditIncomeModal from './EditIncomeModal';
 import ConfirmationModal from './ConfirmationModal';
 
+// SVG Icons (no changes needed)
 const EditIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.5L15.232 5.232z" /></svg> );
 const DeleteIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-4v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg> );
 const DownloadIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg> );
 const DeleteAllIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-4v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg> );
 
+// Helper functions (no changes needed)
 const formatMoney = (amount, currencySymbol, numberFormat) => {
   const num = Number(amount);
   if (isNaN(num)) return `${currencySymbol || '$'}0.00`;
-
   const options = { minimumFractionDigits: 2, maximumFractionDigits: 2 };
-
   switch (numberFormat) {
     case 'dot':
       return `${currencySymbol}${new Intl.NumberFormat('de-DE', options).format(num)}`;
@@ -36,14 +36,11 @@ const formatMoney = (amount, currencySymbol, numberFormat) => {
 const formatDateTime = (timestamp) => {
   if (!timestamp) return '';
   const date = timestamp.toDate();
-
   const formattedDate = date.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
-
   const hours = String(date.getHours()).padStart(2, '0');
   const minutes = String(date.getMinutes()).padStart(2, '0');
   const seconds = String(date.getSeconds()).padStart(2, '0');
   const formattedTime = `${hours}:${minutes}:${seconds}`;
-
   return `${formattedDate}, ${formattedTime}`;
 };
 
@@ -71,6 +68,12 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
   const [selectedMonth, setSelectedMonth] = useState('');
   const [selectedYear, setSelectedYear] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
+
+  // NEW STATE: To control the sorting preference
+  // 'date': Sorts by creation date (desc)
+  // 'income': Incomes first, then expenses (both by date desc)
+  // 'expense': Expenses first, then incomes (both by date desc)
+  const [sortBy, setSortBy] = useState('date'); 
 
   const { budget, currency, numberFormat, appTitle } = appSettings;
 
@@ -109,8 +112,31 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
       );
     }
 
-    return transactions.sort((a, b) => b.createdAt.toDate() - a.createdAt.toDate());
-  }, [expenses, incomes, selectedMonth, selectedYear, searchTerm]);
+    // --- NEW SORTING LOGIC ---
+    let sortedTransactions = [...transactions]; // Create a mutable copy for sorting
+
+    if (sortBy === 'income') {
+      sortedTransactions.sort((a, b) => {
+        // Prioritize income over expense
+        if (a.type === 'income' && b.type === 'expense') return -1;
+        if (a.type === 'expense' && b.type === 'income') return 1;
+        // If same type, sort by date (descending)
+        return b.createdAt.toDate() - a.createdAt.toDate();
+      });
+    } else if (sortBy === 'expense') {
+      sortedTransactions.sort((a, b) => {
+        // Prioritize expense over income
+        if (a.type === 'expense' && b.type === 'income') return -1;
+        if (a.type === 'income' && b.type === 'expense') return 1;
+        // If same type, sort by date (descending)
+        return b.createdAt.toDate() - a.createdAt.toDate();
+      });
+    } else { // sortBy === 'date' (default)
+      sortedTransactions.sort((a, b) => b.createdAt.toDate() - a.createdAt.toDate());
+    }
+
+    return sortedTransactions;
+  }, [expenses, incomes, selectedMonth, selectedYear, searchTerm, sortBy]); // Add sortBy to dependencies
 
   const availableYears = useMemo(() => {
     const years = new Set();
@@ -139,7 +165,6 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
   useEffect(() => {
     if (!user.uid) return;
 
-    // Listen to the single 'transactions' subcollection
     const transactionsColRef = collection(db, 'userSettings', user.uid, 'transactions');
     const qTransactions = query(transactionsColRef, orderBy('createdAt', 'desc'));
 
@@ -187,7 +212,7 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
         amount: amount,
         createdAt: new Date(),
         notes: newExpenseNotes.trim(),
-        type: 'expense', // Added type field
+        type: 'expense',
       });
       setNewExpenseDesc('');
       setNewExpenseAmount('');
@@ -215,7 +240,7 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
         amount: amount,
         createdAt: new Date(),
         notes: newIncomeNotes.trim(),
-        type: 'income', // Added type field
+        type: 'income',
       });
       setNewIncomeDesc('');
       setNewIncomeAmount('');
@@ -390,7 +415,6 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
       return toast.error(`There are no ${confirmDeleteAllType} to delete.`);
     }
 
-    // Filter to delete only the specific type
     deletionPromise = Promise.all(itemsToDelete.map(item => deleteDoc(doc(transactionsColRef, item.id))));
 
     toast.promise(deletionPromise, {
@@ -406,7 +430,7 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
       <Helmet>
         <title>Your Dashboard | BUDGET.LIMIT</title>
         <meta name="description" content="Manage your personal budget, track income and expenses, and monitor your financial goals with your custom dashboard." />
-        <meta name="robots" content="noindex, nofollow" /> {/* IMPORTANT: Prevents indexing of private user data */}
+        <meta name="robots" content="noindex, nofollow" />
       </Helmet>
 
       <SetupModal
@@ -505,9 +529,11 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
           </div>
 
           <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md">
-            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 gap-4">
-              <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-100 mb-2 sm:mb-0">Transaction History</h3>
-              <div className="flex flex-col sm:flex-row items-center gap-2 w-full sm:w-auto">
+            <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-100 mb-4">Transaction History</h3>
+            
+            {/* Filter and Sort Controls */}
+            <div className="flex flex-col gap-4 mb-4">
+              <div className="flex flex-col sm:flex-row items-center gap-2 w-full">
                 <input
                   type="text"
                   placeholder="Search transactions..."
@@ -548,7 +574,43 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
                   </div>
                 </div>
               </div>
+              
+              {/* Sort Buttons */}
+              <div className="flex flex-wrap gap-2 justify-center sm:justify-start">
+                <button
+                  onClick={() => setSortBy('date')}
+                  className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                    sortBy === 'date'
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600'
+                  }`}
+                >
+                  Sort by Date
+                </button>
+                <button
+                  onClick={() => setSortBy('income')}
+                  className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                    sortBy === 'income'
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600'
+                  }`}
+                >
+                  Sort by Income
+                </button>
+                <button
+                  onClick={() => setSortBy('expense')}
+                  className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                    sortBy === 'expense'
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600'
+                  }`}
+                >
+                  Sort by Expense
+                </button>
+              </div>
             </div>
+
+            {/* Action Buttons (Download, Delete All) */}
             <div className="flex flex-wrap gap-2 mb-4 justify-start sm:justify-end">
               <button
                 onClick={handleDownloadPdf}
@@ -572,6 +634,7 @@ const Dashboard = ({ user, showSetupModal, setShowSetupModal, appSettings, updat
                 <DeleteAllIcon />
               </button>
             </div>
+
             <div className="flex flex-col sm:flex-row justify-between text-lg font-semibold mb-3 gap-2">
               <span className="text-green-600 dark:text-green-400 text-base sm:text-lg">Total Income: {formatMoney(totalIncome, currency, numberFormat)}</span>
               <span className="text-red-600 dark:text-red-400 text-base sm:text-lg">Total Expenses: {formatMoney(totalExpenses, currency, numberFormat)}</span>
